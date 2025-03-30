@@ -1,0 +1,4 @@
+requests
+notebook
+numpy
+pandas
