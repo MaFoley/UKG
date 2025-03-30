@@ -1,0 +1,27 @@
+[Base]
+base_url= 'https://ke41.ulticlock.com/UtmOdataServices/api/'
+username= 'ENTERUSERNAME'
+password= 'ENTERPASS'
+[Endpoints]
+endpoints = [
+    "Employee"
+    ,"OrgLevel1"
+    ,"OrgLevel2"
+    ,"OrgLevel3"
+    ,"Orglevel4"
+    ,"Location"
+    ,"PayCode"
+    ,"PayGroup"
+    ,"PayMatrix"
+    ,"PayType"
+    ,"Project"
+    ,"Reason"
+#    ,"Shift"
+#    ,"ShiftDet"
+#    ,"ShiftLvl"
+    ,"Job"
+#    ,"Time"
+#    ,"Schedule"
+#    ,"ScheduleRequest"
+#    ,"Timesheet"
+]
