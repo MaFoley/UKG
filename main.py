@@ -1,7 +1,7 @@
 
 import tomllib, requests 
 import pandas as pd
-def main():
+def main(startDate: str, endDate: str):
     with open("config.toml", "rb") as f:
         endpoint = tomllib.load(f)
     host_url = endpoint["Base"]["base_url"]
@@ -14,8 +14,9 @@ def main():
     r = requests.get(f'{host_url}/Employee', auth=(username, password))
     r.raise_for_status()
     employee_df = pd.DataFrame.from_records(r.json()["value"], index="EmpId")
-    #Time gets special treatment
-    payload = {'$filter' : ['WorkDate ge 2025-03-22 and WorkDate le 2025-03-31']}
+
+    #Time must be filtered or else will timeout endpoint
+    payload = {'$filter' : [f'WorkDate ge {startDate} and WorkDate le {endDate}']}
     try:
         print(f'trying Time...',end="")
         r = requests.get(f'{host_url}/Time', auth=(username, password), params= payload)
@@ -54,5 +55,5 @@ def main():
     employee_df.to_csv(f'.\DataFiles\Employee.csv')
     time_df.to_csv(f'.\DataFiles\Time.csv')
 if __name__ == "__main__":
-    main()
+    main("2025-03-24", "2025-03-31")
   

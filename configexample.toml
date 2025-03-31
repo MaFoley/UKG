@@ -1,7 +1,7 @@
 [Base]
 base_url= 'https://ke41.ulticlock.com/UtmOdataServices/api/'
-username= 'HJReporting'
-password= 'rLFs?7@E=iXdtK6q*b:D'
+username= 'EnterUserName'
+password= 'EnterPassWord'
 [primary_endpoints]
 Employee= "EmpId"
 Time = ""
