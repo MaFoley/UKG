@@ -1,27 +1,27 @@
 [Base]
 base_url= 'https://ke41.ulticlock.com/UtmOdataServices/api/'
-username= 'ENTERUSERNAME'
-password= 'ENTERPASS'
-[Endpoints]
-endpoints = [
-    "Employee"
-    ,"OrgLevel1"
-    ,"OrgLevel2"
-    ,"OrgLevel3"
-    ,"Orglevel4"
-    ,"Location"
-    ,"PayCode"
-    ,"PayGroup"
-    ,"PayMatrix"
-    ,"PayType"
-    ,"Project"
-    ,"Reason"
-#    ,"Shift"
-#    ,"ShiftDet"
-#    ,"ShiftLvl"
-    ,"Job"
-#    ,"Time"
-#    ,"Schedule"
-#    ,"ScheduleRequest"
-#    ,"Timesheet"
-]
+username= 'HJReporting'
+password= 'rLFs?7@E=iXdtK6q*b:D'
+[primary_endpoints]
+Employee= "EmpId"
+Time = ""
+[attribute_endpoints]
+"OrgLevel1" = "OrgLevel1Id"
+"OrgLevel2" = "OrgLevel2Id"
+"OrgLevel3" = "OrgLevel3Id"
+"Orglevel4" = "OrgLevel4Id"
+"Location" = "LocationId"
+#"PayCode"
+#"PayGroup"
+#"PayMatrix"
+#"PayType"
+"Project" = "ProjectId"
+#"Reason" = "ReasonId"
+#    "Shift"
+#    "ShiftDet"
+#    "ShiftLvl"
+"Job" = "JobId"
+#    "Time"
+#    "Schedule"
+#    "ScheduleRequest"
+#    "Timesheet"
