@@ -1,3 +1,4 @@
 config.toml
 DataFiles/*
 !DataFiles/csvexplain.md
+__pycache__
