@@ -2,3 +2,4 @@ requests
 notebook
 numpy
 pandas
+SQLAlchemy
