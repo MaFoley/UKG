@@ -1,30 +1,40 @@
 
 import tomllib, requests 
 import pandas as pd
+import requests.auth
 import sqlalchemy, models
+#Construction's ID in UKG tables
+ORGLEVEL1ID = 263
 def main(startDate: str, endDate: str):
     with open("config.toml", "rb") as f:
         endpoint = tomllib.load(f)
+
+    #establish UKG API
     host_url = endpoint["Base"]["base_url"]
     username = endpoint["Base"]["username"]
     password = endpoint["Base"]["password"]
+    my_auth = requests.auth.HTTPBasicAuth(username, password)
+    s = requests.Session()
+    s.auth = my_auth
     attributes = endpoint["attribute_endpoints"]
+    print(f'host_url: {host_url},\nusername:{username}, password:{password}')
+
+    #setup sqlite db file
     engine =sqlalchemy.create_engine("sqlite:///DataFiles/utm.db", echo=True)
     models.Base.metadata.drop_all(engine)
     models.Base.metadata.create_all(engine)
-    print(f'host_url: {host_url},\nusername:{username}, password:{password}')
 
     print(f'trying Employee...',end="")
-    r = requests.get(f'{host_url}/Employee', auth=(username, password))
+    r = s.get(f'{host_url}/Employee')
     r.raise_for_status()
     employee_df = pd.DataFrame.from_records(r.json()["value"], index="EmpId")
     employee_df.to_sql("Employee",engine,if_exists='replace')
 
     #Time must be filtered or else will timeout endpoint
-    payload = {'$filter' : [f'WorkDate ge {startDate} and WorkDate le {endDate}']}
+    payload = {'$filter' : [f'WorkDate ge {startDate} and WorkDate le {endDate} & OrgLevel1ID eq {ORGLEVEL1ID}']}
     try:
         print(f'trying Time...',end="")
-        r = requests.get(f'{host_url}/Time', auth=(username, password), params= payload)
+        r = s.get(f'{host_url}/Time', params= payload)
         print(r.url)
         time_df = pd.DataFrame.from_records(r.json()["value"], index="Id")
         time_df.to_sql("Time",engine,if_exists='replace')
@@ -34,7 +44,7 @@ def main(startDate: str, endDate: str):
     for ep, idColumn in attributes.items():
         try:
             print(f'trying {ep}...',end="")
-            r = requests.get(f'{host_url}/{ep}', auth=(username, password))
+            r = s.get(f'{host_url}/{ep}')
             r.raise_for_status()
         except requests.HTTPError:
             print(f'ERR status_code: {r.status_code}')
@@ -59,6 +69,7 @@ def main(startDate: str, endDate: str):
                                         )
     employee_df.to_csv(f'./DataFiles/Employee.csv')
     time_df.to_csv(f'./DataFiles/Time.csv')
+    s.close()
 if __name__ == "__main__":
     main("2025-03-24", "2025-03-31")
   
