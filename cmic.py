@@ -9,14 +9,19 @@ import sqlalchemy
 class Timesheet_Entry:
     WEEKLYPAYGROUP = 'HJRU'
     BIWEEKLYPAYGROUP = 'HJRC'
+    WEEKLYPAYGROUP = 'HJRU'
+    BIWEEKLYPAYGROUP = 'HJRC'
     def __init__(self, time_entry: Time):
         """
         TshDate expected in yyyy-mm-dd format
         """
         self.TshPrnCode = self._findPayRun(time_entry.paygroup.name)
+        self.TshPrnCode = self._findPayRun(time_entry.paygroup.name)
         self.TshDate: str = parser.parse(time_entry.WorkDate).strftime('%Y-%m-%d')
         self.TshPprYear = parser.parse(time_entry.WorkDate).year
         self.TshPprPeriod = self._TshPprPeriod(parser.parse(time_entry.WorkDate))
+        self.TshDocumentNo = None
+        self.TshEmpNo = time_entry.employee.shortEmpId()
         self.TshDocumentNo = None
         self.TshEmpNo = time_entry.employee.shortEmpId()
         self.TshTypeCode = 'J'
