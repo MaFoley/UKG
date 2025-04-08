@@ -163,8 +163,10 @@ class Employee(Base):
     def __repr__(self) -> str:
         return f"(Employee object Id={self.Id!r}, EmpId={self.EmpId!r}, Name: {self.FirstName} {self.LastName})"
 class Timesheet_Entry:
-    WEEKLYPAYGROUP = 'HJRU'
-    BIWEEKLYPAYGROUP = 'HJRC'
+    """
+    Meat and potatoes of the middleware.
+    Constructor ingests a UKG Time object and generates the required format for posting to CMiC
+    """
     WEEKLYPAYGROUP = 'HJRU'
     BIWEEKLYPAYGROUP = 'HJRC'
     def __init__(self, time_entry: Time):
