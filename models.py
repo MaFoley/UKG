@@ -115,6 +115,9 @@ class Time(Base):
     AdjustmentDate: Mapped[float]
     InRounded: Mapped[str]
     OutRounded: Mapped[str]
+    def companyCode(self):
+        #HJRC or HJRU become HJR
+        return self.paygroup.name[:3]
     def __repr__(self) -> str:
         return f"Time Object (Id={self.Id!r}, EmpId={self.EmpId!r})"
 class Employee(Base):
@@ -153,6 +156,6 @@ class Employee(Base):
         this method extracts CMiC short ee code from UKG long code
         CMiC uses 6 digit employee code. UKG uses 9+company code
         """
-        return self.EmpId[:9]
+        return self.EmpId[3:9]
     def __repr__(self) -> str:
         return f"(Employee object Id={self.Id!r}, EmpId={self.EmpId!r}, Name: {self.FirstName} {self.LastName})"
