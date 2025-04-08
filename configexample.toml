@@ -1,5 +1,5 @@
 [Base]
-base_url= 'https://ke41.ulticlock.com/UtmOdataServices/api/'
+base_url= 'https://ke41.ulticlock.com/UtmOdataServices/api'
 username= 'EnterUserName'
 password= 'EnterPassWord'
 [primary_endpoints]

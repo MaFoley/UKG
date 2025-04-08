@@ -2,3 +2,4 @@ config.toml
 DataFiles/*
 !DataFiles/csvexplain.md
 __pycache__
+ipyscribbles.py

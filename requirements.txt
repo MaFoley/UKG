@@ -3,3 +3,6 @@ notebook
 numpy
 pandas
 SQLAlchemy
+ipython
+ipykernel
+jupyter-console

@@ -1,5 +1,6 @@
 
 import tomllib, requests 
+from urllib.parse import quote_plus
 import pandas as pd
 import requests.auth
 import sqlalchemy, models
@@ -20,7 +21,7 @@ def main(startDate: str, endDate: str):
     print(f'host_url: {host_url},\nusername:{username}, password:{password}')
 
     #setup sqlite db file
-    engine =sqlalchemy.create_engine("sqlite:///DataFiles/utm.db", echo=True)
+    engine =sqlalchemy.create_engine("sqlite:///DataFiles/utm.db", echo=False)
     models.Base.metadata.drop_all(engine)
     models.Base.metadata.create_all(engine)
 
@@ -30,12 +31,13 @@ def main(startDate: str, endDate: str):
     employee_df = pd.DataFrame.from_records(r.json()["value"], index="EmpId")
     employee_df.to_sql("Employee",engine,if_exists='replace')
 
-    #Time must be filtered or else will timeout endpoint
-    payload = {'$filter' : [f'WorkDate ge {startDate} and WorkDate le {endDate} & OrgLevel1ID eq {ORGLEVEL1ID}']}
+    #time must be filtered or else will timeout endpoint
+    payload = f'$filter=WorkDate ge {startDate} and WorkDate le {endDate}&OrgLevel1Id eq {ORGLEVEL1ID}'
+               
+    
     try:
         print(f'trying Time...',end="")
-        r = s.get(f'{host_url}/Time', params= payload)
-        print(r.url)
+        r = s.get(f'{host_url}/Time',params=payload)
         time_df = pd.DataFrame.from_records(r.json()["value"], index="Id")
         time_df.to_sql("Time",engine,if_exists='replace')
     except:
@@ -71,5 +73,5 @@ def main(startDate: str, endDate: str):
     time_df.to_csv(f'./DataFiles/Time.csv')
     s.close()
 if __name__ == "__main__":
-    main("2025-03-24", "2025-03-31")
+    main("2025-04-01", "2025-04-07")
   

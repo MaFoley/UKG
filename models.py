@@ -55,7 +55,7 @@ class Location(Base):
 class Time(Base):
     __tablename__ = "Time"
     Id: Mapped[int] = mapped_column(primary_key=True)
-#    EmpId: Mapped[int] = mapped_column(ForeignKey("Employee.Emp_Id"))
+    EmpId: Mapped[int] = mapped_column(ForeignKey("Employee.EmpId"))
     WorkDate: Mapped[str]
     PaycodeId: Mapped[int] 
     PaycodeExp: Mapped[str]
@@ -102,10 +102,10 @@ class Time(Base):
     InRounded: Mapped[str]
     OutRounded: Mapped[str]
     def __repr__(self) -> str:
-        return f"(id={self.id!r}, name={self.name!r}, description={self.description!r})"
+        return f"(Id={self.Id!r}, EmpId={self.EmpId!r}"
 class Employee(Base):
     __tablename__ = "Employee"
-    Emp_Id: Mapped[str] = mapped_column(primary_key=True)
+    EmpId: Mapped[str] = mapped_column(primary_key=True)
     Id: Mapped[int]
     CardNum: Mapped[str]
     SupId: Mapped[str]
@@ -129,4 +129,4 @@ class Employee(Base):
     ShiftId: Mapped[int]
     AccessGroupId: Mapped[int]
     def __repr__(self) -> str:
-        return f"(id={self.id!r}, name={self.name!r}, description={self.description!r})"
+        return f"(Id={self.Id!r}, EmpId={self.EmpId!r}, Name: {self.FirstName} {self.LastName})"

@@ -21,7 +21,7 @@ class Timesheet_Entry:
 def main():
     host_url = r'https://nova-api.cmiccloud.com/cmicprod'
     username = r'HJR||NSMITH'
-    password = input('please enter pw:')
+    password = 'cX9-_L77i>'
     my_auth = requests.auth.HTTPBasicAuth(username, password)
     with requests.Session() as s:
         s.auth = my_auth
