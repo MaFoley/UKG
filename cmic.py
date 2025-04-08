@@ -7,15 +7,18 @@ from models import Time, Employee
 from sqlalchemy import select
 import sqlalchemy
 class Timesheet_Entry:
+    WEEKLYPAYGROUP = 'HJRU'
+    BIWEEKLYPAYGROUP = 'HJRC'
     def __init__(self, time_entry: Time):
         """
         TshDate expected in yyyy-mm-dd format
         """
-        self.TshPrnCode = 'B'
+        self.TshPrnCode = self._findPayRun(time_entry.paygroup.name)
         self.TshDate: str = parser.parse(time_entry.WorkDate).strftime('%Y-%m-%d')
         self.TshPprYear = parser.parse(time_entry.WorkDate).year
         self.TshPprPeriod = self._TshPprPeriod(parser.parse(time_entry.WorkDate))
-        self.TshEmpNo = time_entry.EmpId
+        self.TshDocumentNo = None
+        self.TshEmpNo = time_entry.employee.shortEmpId()
         self.TshTypeCode = 'J'
         self.TshUnionCode = None
         if time_entry.job != None:
@@ -23,11 +26,18 @@ class Timesheet_Entry:
             self.TshJobDeptWOID = time_entry.project.name #time->projectid->project.name
             self.TshPHSACCTWIID = time_entry.orglevel3.name
             self.TshNormalHours: float = time_entry.RegHr
-        self.TshCompCode = None  #portion of employee id after dash. map PQCD4 -> HJR
+        self.TshCompCode = time_entry.companyCode()
         self.TshCATEXPID = 'L'
         self.TshOTHours: float = time_entry.Overt1
         self.TshDOTHours:float = time_entry.Overt2
 
+    def _findPayRun(self, paygroup: str) -> str:
+        if paygroup.upper().strip() == self.BIWEEKLYPAYGROUP:
+            return 'B'
+        elif paygroup.upper().strip() == self.WEEKLYPAYGROUP:
+            return 'W'
+        else:
+            return 'New Paygroup'
     def _TshPprPeriod(self, date: datetime) -> int:
         #if tshdate > prior period start date and <= period end date, then return pay period
         periodEndDate = datetime(2024,12,29)
