@@ -1,27 +1,54 @@
 import requests, json
+from pprint import pprint
 from types import SimpleNamespace
-from datetime import datetime
+from datetime import datetime, timedelta
 from dateutil import parser, tz
+from models import Time, Employee
+from sqlalchemy import select
+import sqlalchemy
 class Timesheet_Entry:
-    def __init__(self, TshDate: str):
+    def __init__(self, time_entry: Time):
         """
         TshDate expected in yyyy-mm-dd format
         """
-        self.TshDate = parser.parse(TshDate)
-    def TshPprYear(self) -> int:
-        return self.TshDate.year
-    def TshPprPeriod(self) -> int:
-        #TODO: build logic for pay periods
+        self.TshPrnCode = 'B'
+        self.TshDate: str = parser.parse(time_entry.WorkDate).strftime('%Y-%m-%d')
+        self.TshPprYear = parser.parse(time_entry.WorkDate).year
+        self.TshPprPeriod = self._TshPprPeriod(parser.parse(time_entry.WorkDate))
+        self.TshEmpNo = time_entry.EmpId
+        self.TshTypeCode = 'J'
+        self.TshUnionCode = None
+        if time_entry.job != None:
+            self.TshTradeCode = time_entry.job.name #time->emp->jobid->job.name
+            self.TshJobDeptWOID = time_entry.project.name #time->projectid->project.name
+            self.TshPHSACCTWIID = time_entry.orglevel3.name
+            self.TshNormalHours: float = time_entry.RegHr
+        self.TshCompCode = None  #portion of employee id after dash. map PQCD4 -> HJR
+        self.TshCATEXPID = 'L'
+        self.TshOTHours: float = time_entry.Overt1
+        self.TshDOTHours:float = time_entry.Overt2
+
+    def _TshPprPeriod(self, date: datetime) -> int:
         #if tshdate > prior period start date and <= period end date, then return pay period
-        return 7
+        periodEndDate = datetime(2024,12,29)
+        delta = date - periodEndDate
+        return delta.days // 14 + 1
+            
     def __str__(self):
-        return f'Timesheet Entry for: {self.TshDate}'
+        return self.__repr__()
     def __repr__(self):
-        return f'Timesheet Entry for: {self.TshDate}'
+        repr_str = f"{self.__class__.__name__}"
+        repr_str += '('
+        
+        for key, val in self.__dict__.items():
+            val       = f"'{val}'" if isinstance(val, str) else val
+            repr_str += f"{key}={val}\n, "
+        
+        return repr_str.strip(", ") + ')'
 def main():
     host_url = r'https://nova-api.cmiccloud.com/cmicprod'
     username = r'HJR||NSMITH'
-    password = 'cX9-_L77i>'
+    password = input('please enter pass:')
     my_auth = requests.auth.HTTPBasicAuth(username, password)
     with requests.Session() as s:
         s.auth = my_auth
@@ -33,7 +60,14 @@ def main():
         payruns = dict_payruns.items
     return payruns
 if __name__ == "__main__":
-    # payruns=    main()
-    # print(payruns[0])
-    t = Timesheet_Entry("2025-04-07")
-    print(repr(t), t.TshPprPeriod())
+    engine =sqlalchemy.create_engine("sqlite:///DataFiles/utm.db", echo=False)
+    with sqlalchemy.orm.Session(engine) as session:
+        joined_stmt = select(Time).where(Time.EmpId== "000223224-PQCD4")
+        timesheets = session.execute(joined_stmt)
+        # example = Time()
+        # example.WorkDate = "2025-04-06"
+        # t = Timesheet_Entry(example)
+        for t in timesheets.scalars():
+           entry = Timesheet_Entry(t)
+           pprint(entry) 
+           print(json.dumps(entry.__dict__,indent=4))

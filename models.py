@@ -38,6 +38,13 @@ class OrgLevel3(Base):
     description: Mapped[str] = mapped_column(String())
     def __repr__(self) -> str:
         return f"(Id={self.Id!r}, name={self.name!r}, description={self.description!r})"
+class Paygroup(Base):
+    __tablename__ = "Paygroup"
+    Id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String())
+    description: Mapped[str] = mapped_column(String())
+    def __repr__(self) -> str:
+        return f"(Id={self.Id!r}, name={self.name!r}, description={self.description!r})"
 class Project(Base):
     __tablename__ = "Project"
     Id: Mapped[int] = mapped_column(primary_key=True)
@@ -56,6 +63,7 @@ class Time(Base):
     __tablename__ = "Time"
     Id: Mapped[int] = mapped_column(primary_key=True)
     EmpId: Mapped[int] = mapped_column(ForeignKey("Employee.EmpId"))
+    employee: Mapped["Employee"] = relationship(back_populates="time_entries")
     WorkDate: Mapped[str]
     PaycodeId: Mapped[int] 
     PaycodeExp: Mapped[str]
@@ -65,8 +73,10 @@ class Time(Base):
     Out: Mapped[float] 
     InExp: Mapped[float] 
     OutExp: Mapped[float] 
+    RegHr: Mapped[float] 
     SchHrs: Mapped[float] 
     Overt1: Mapped[float] 
+    Overt2: Mapped[float] 
     Overt3: Mapped[float] 
     Overt5: Mapped[float] 
     RegPay: Mapped[float] 
@@ -82,13 +92,17 @@ class Time(Base):
     WeekOt4: Mapped[float] 
     WeekOt5: Mapped[float] 
     ReasonId: Mapped[str] 
-#    PaygroupId: Mapped[int] = mapped_column(ForeignKey("Paygroup.Id"))
+    PaygroupId: Mapped[int] = mapped_column(ForeignKey("Paygroup.Id"))
+    paygroup: Mapped["Paygroup"] = relationship()
     LocationId: Mapped[int] = mapped_column(ForeignKey("Location.Id"))
     JobId: Mapped[int] = mapped_column(ForeignKey("Job.Id"))
-    ProjectId: Mapped[int] = mapped_column(ForeignKey("Job.Id"))
+    job: Mapped["Job"] = relationship()
+    ProjectId: Mapped[int] = mapped_column(ForeignKey("Project.Id"))
+    project: Mapped["Project"] = relationship()
     OrgLevel1Id: Mapped[int] = mapped_column(ForeignKey("OrgLevel1.Id"))
     OrgLevel2Id: Mapped[int] = mapped_column(ForeignKey("OrgLevel2.Id"))
     OrgLevel3Id: Mapped[int] = mapped_column(ForeignKey("OrgLevel3.Id"))
+    orglevel3: Mapped["OrgLevel3"] = relationship()
     OrgLevel4Id: Mapped[int]
     PeriodTh: Mapped[float]
     SiteIn: Mapped[float]
@@ -102,10 +116,11 @@ class Time(Base):
     InRounded: Mapped[str]
     OutRounded: Mapped[str]
     def __repr__(self) -> str:
-        return f"(Id={self.Id!r}, EmpId={self.EmpId!r}"
+        return f"Time Object (Id={self.Id!r}, EmpId={self.EmpId!r})"
 class Employee(Base):
     __tablename__ = "Employee"
     EmpId: Mapped[str] = mapped_column(primary_key=True)
+    time_entries: Mapped[List["Time"]] = relationship(back_populates="employee")
     Id: Mapped[int]
     CardNum: Mapped[str]
     SupId: Mapped[str]
@@ -124,9 +139,20 @@ class Employee(Base):
     OrgLevel1Id: Mapped[int] = mapped_column(ForeignKey("OrgLevel1.Id"))
     OrgLevel2Id: Mapped[int] = mapped_column(ForeignKey("OrgLevel2.Id"))
     OrgLevel3Id: Mapped[int] = mapped_column(ForeignKey("OrgLevel3.Id"))
+    orglevel3: Mapped["OrgLevel3"] = relationship()
     OrgLevel4Id: Mapped[int]
     PayPolicyId: Mapped[int]
+    PaygroupId: Mapped[int] = mapped_column(ForeignKey("Paygroup.Id"))
+    paygroup: Mapped["Paygroup"] = relationship()
     ShiftId: Mapped[int]
     AccessGroupId: Mapped[int]
+    def companyCode(self):
+        return self.EmpId.split('-')[1]
+    def shortEmpId(self)->str:
+        """
+        this method extracts CMiC short ee code from UKG long code
+        CMiC uses 6 digit employee code. UKG uses 9+company code
+        """
+        return self.EmpId[:9]
     def __repr__(self) -> str:
-        return f"(Id={self.Id!r}, EmpId={self.EmpId!r}, Name: {self.FirstName} {self.LastName})"
+        return f"(Employee object Id={self.Id!r}, EmpId={self.EmpId!r}, Name: {self.FirstName} {self.LastName})"

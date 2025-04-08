@@ -6,7 +6,7 @@ import requests.auth
 import sqlalchemy, models
 #Construction's ID in UKG tables
 ORGLEVEL1ID = 263
-def main(startDate: str, endDate: str):
+def load_ukg(startDate: str, endDate: str):
     with open("config.toml", "rb") as f:
         endpoint = tomllib.load(f)
 
@@ -73,5 +73,5 @@ def main(startDate: str, endDate: str):
     time_df.to_csv(f'./DataFiles/Time.csv')
     s.close()
 if __name__ == "__main__":
-    main("2025-04-01", "2025-04-07")
+    load_ukg("2025-04-01", "2025-04-07")
   
