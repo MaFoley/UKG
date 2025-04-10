@@ -187,15 +187,15 @@ class Timesheet_Entry:
         if time_entry.job != None:
             self.TshTradeCode = time_entry.job.name #time->emp->jobid->job.name
             self.TshJobdeptwoId = time_entry.project.name #time->projectid->project.name
-            self.TshphsacctwiId = time_entry.orglevel3.name
+            self.TshPhsacctwiId = time_entry.orglevel3.name
         self.TshNormalHours: float = time_entry.RegHr
         self.TshCompCode = time_entry.companyCode()
         self.TshWorkCompCode = self.TshCompCode
-        self.TshcatexpId = 'L'
-        self.TshOTHours: float = time_entry.Overt1
-        self.TshDoTHours:float = time_entry.Overt2
+        self.TshCatexpId = 'L'
+        self.TshOtHours: float = time_entry.Overt1
+        self.TshDotHours:float = time_entry.Overt2
         self.TshWcbCode = None #TODO: attach workers comp code
-        self.TshOHType = None
+        self.TshOhType = None
 
     def _findPayRun(self, paygroup: str) -> str:
         if paygroup.upper().strip() == self.BIWEEKLYPAYGROUP:

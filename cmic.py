@@ -23,7 +23,7 @@ def main():
 if __name__ == "__main__":
     engine =sqlalchemy.create_engine("sqlite:///DataFiles/utm.db", echo=False)
     with sqlalchemy.orm.Session(engine) as session:
-        joined_stmt = select(Time).where(Time.EmpId== "000223224-PQCD4")
+        joined_stmt = select(Time).where(Time.EmpId== "000223308-PQCD4")
         timesheets = session.execute(joined_stmt)
         # example = Time()
         # example.WorkDate = "2025-04-06"
