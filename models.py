@@ -180,8 +180,6 @@ class Timesheet_Entry:
         self.TshPprPeriod = self._TshPprPeriod(parser.parse(time_entry.WorkDate))
         self.TshDocumentNo = None
         self.TshEmpNo = time_entry.employee.shortEmpId()
-        self.TshDocumentNo = None
-        self.TshEmpNo = time_entry.employee.shortEmpId()
         self.TshTypeCode = 'J'
         self.TshUnionCode = None
         if time_entry.job != None:
