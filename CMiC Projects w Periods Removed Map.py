@@ -76,7 +76,7 @@ df["JobCodeNoDots"] = df["JobCode"].str.replace(".", "", regex=False)
 cwd = os.path.dirname(os.path.abspath(__file__))
 
 # Save path
-csv_path = os.path.join(cwd, "/DataFiles/CMiC_Project_Summary.csv")
+csv_path = os.path.join(cwd, "DataFiles/CMiC_Project_Summary.csv")
 
 # Save to CSV
 df.to_csv(csv_path, index=False)
