@@ -1,4 +1,4 @@
-import csv
+import csv, tomllib
 from sqlalchemy import select
 import pandas as pd
 from sqlalchemy.orm import Session
@@ -6,12 +6,14 @@ from models import Employee, Location
 import sqlalchemy
 import requests
 
-#auth
-host_url = r'https://nova-api-test.cmiccloud.com/cmictest'
-username = r'HJR||NSMITH'
-password = r''
-my_auth = requests.auth.HTTPBasicAuth(username, password)
+with open("config.toml", "rb") as f:
+    endpoint = tomllib.load(f)
 
+#establish CMiC API
+host_url = endpoint["CMiC_Base"]["base_url"]
+username = endpoint["CMiC_Base"]["username"]
+password = endpoint["CMiC_Base"]["password"]
+my_auth = requests.auth.HTTPBasicAuth(username, password)
 results = []
 
 #dept map
@@ -54,7 +56,7 @@ def get_employee_data(emp_id: str):  # Picks up all employees
             "EmpDeptCode": mapped_dept,  # Mapped
             "EmpPrnCode": 'B',
             "EmpPygCode": 'PMOH' if mapped_dept== 'PMG' else 'CNOH',#I think this will work, does it even matter though
-            "EmpTrdCode": 'HPM921', #Sent to the weirdest Trade Code I could find, Airplane Maint
+            "EmpTrdCode": emp.job.name, 
             "EmpWrlCode": 'ATL',
             "EmpChargeOutRate": 3, #need provided info
             "EmpBillingRate": 3, #need provided info
@@ -130,11 +132,12 @@ def main():
                     "Response": str(e)
                 })
             
-            # After loop:
-            with open("employee_post_results.csv", "w", newline="") as f:
-                writer = csv.DictWriter(f, fieldnames=["EmpId", "Status", "Response"])
-                writer.writeheader()
-                writer.writerows(results)
+        # After loop:
+        with open("DataFiles/employee_post_results.csv", "w", newline="") as f:
+            print(f"writing {len(results)} records to file")
+            writer = csv.DictWriter(f, fieldnames=["EmpId", "Status", "Response"])
+            writer.writeheader()
+            writer.writerows(results)
 
 if __name__ == "__main__":
     main()
