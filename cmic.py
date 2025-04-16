@@ -1,12 +1,16 @@
-import requests, json, csv
+import requests, json, csv, tomllib
 from datetime import datetime
 from models import Time, Employee, Timesheet_Entry
 from sqlalchemy import select
 import sqlalchemy
 def main():
-    host_url = r'https://nova-api-test.cmiccloud.com/cmictest'
-    username = r'HJR||NSMITH'
-    password = r''
+    with open("config.toml", "rb") as f:
+        endpoint = tomllib.load(f)
+
+    #establish CMiC API
+    host_url = endpoint["CMiC_Base"]["base_url"]
+    username = endpoint["CMiC_Base"]["username"]
+    password = endpoint["CMiC_Base"]["password"]
     my_auth = requests.auth.HTTPBasicAuth(username, password)
     with requests.Session() as s:
         s.auth = my_auth

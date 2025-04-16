@@ -143,8 +143,9 @@ class Employee(Base):
     PayMethod: Mapped[int]
     PayType: Mapped[int]
     LocationId: Mapped[int] = mapped_column(ForeignKey("Location.Id"))
-    JobId: Mapped[int] = mapped_column(ForeignKey("Job.Id"))
-    ProjectId: Mapped[int] = mapped_column(ForeignKey("Job.Id"))
+    JobId: Mapped[int] = mapped_column(ForeignKey("Job.Id")) 
+    job: Mapped["Job"] = relationship()#aka CMiC Trade Code
+    ProjectId: Mapped[int] = mapped_column(ForeignKey("Project.Id"))
     OrgLevel1Id: Mapped[int] = mapped_column(ForeignKey("OrgLevel1.Id"))
     OrgLevel2Id: Mapped[int] = mapped_column(ForeignKey("OrgLevel2.Id"))
     OrgLevel3Id: Mapped[int] = mapped_column(ForeignKey("OrgLevel3.Id"))

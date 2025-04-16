@@ -25,3 +25,7 @@ Time = ""
 #    "Schedule"
 #    "ScheduleRequest"
 #    "Timesheet"
+[CMiC_Base]
+host_url = 'https://nova-api-test.cmiccloud.com/cmictest'
+username = "HJR||NSMITH"
+password = "EnterPassWord"
