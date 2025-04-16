@@ -9,9 +9,6 @@ from types import SimpleNamespace
 from datetime import datetime, timedelta
 from dateutil import parser, tz
 from sqlalchemy.orm import relationship
-import pandas as pd
-
-
 
 class Base(DeclarativeBase):
     pass

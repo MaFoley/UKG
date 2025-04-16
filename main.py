@@ -73,4 +73,5 @@ def load_ukg(startDate: str, endDate: str):
     time_df.to_csv(f'./DataFiles/Time.csv')
     s.close()
 if __name__ == "__main__":
-    load_ukg("2025-04-06", "2025-04-12")
+    load_ukg("2025-04-01", "2025-04-07")
+  
