@@ -172,7 +172,7 @@ class Timesheet_Entry:
     """
     WEEKLYPAYGROUP = 'HJRU'
     BIWEEKLYPAYGROUP = 'HJRC'
-    def __init__(self, time_entry: Time):
+    def __init__(self, time_entry: Time,dept_to_jobcode: dict = None):
         """
         TshDate expected in yyyy-mm-dd format
         """
@@ -188,7 +188,7 @@ class Timesheet_Entry:
         if time_entry.job != None:
             self.TshTradeCode = time_entry.job.name #time->emp->jobid->job.name
             self.TshJobdeptwoId = time_entry.project.name #time->projectid->project.name
-            self.TshPhsacctwiId = time_entry.orglevel3.name
+            self.TshphsacctwiId = time_entry.orglevel3.name
         self.TshNormalHours: float = time_entry.RegHr
         self.TshCompCode = time_entry.companyCode()
         self.TshWorkCompCode = self.TshCompCode
