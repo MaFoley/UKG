@@ -56,6 +56,7 @@ class Project(Base):
     Id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String())
     description: Mapped[str] = mapped_column(String())
+    #cmic_name: Mapped[str] = mapped_column(String())
     def __repr__(self) -> str:
         return f"(Id={self.Id!r}, name={self.name!r}, description={self.description!r})"
 class Location(Base):
@@ -143,6 +144,7 @@ class Employee(Base):
     PayMethod: Mapped[int]
     PayType: Mapped[int]
     LocationId: Mapped[int] = mapped_column(ForeignKey("Location.Id"))
+    location: Mapped["Location"] = relationship()
     JobId: Mapped[int] = mapped_column(ForeignKey("Job.Id")) 
     job: Mapped["Job"] = relationship()#aka CMiC Trade Code
     ProjectId: Mapped[int] = mapped_column(ForeignKey("Project.Id"))
@@ -157,7 +159,11 @@ class Employee(Base):
     ShiftId: Mapped[int]
     AccessGroupId: Mapped[int]
     def companyCode(self):
-        return self.EmpId.split('-')[1]
+        idParts = self.EmpId.split('-')
+        if len(idParts) > 1:
+            return idParts[1]
+        else:
+            return idParts[0]
     def shortEmpId(self)->str:
         """
         this method extracts CMiC short ee code from UKG long code
@@ -223,3 +229,57 @@ class Timesheet_Entry:
             repr_str += f"{key}={val}\n, "
         
         return repr_str.strip(", ") + ')'
+class CMiC_Employee:   
+    def __init__(self, emp: Employee):
+        dept_map_df = pd.read_csv("DataFiles/DEPARTMENT MAP.csv", header=0, usecols=[1, 3])
+        dept_map_df.columns = ['UKGDName', 'CMiCD']
+        dept_map = {
+            str(k).strip(): str(v).strip()
+            for k, v in zip(dept_map_df['UKGDName'], dept_map_df['CMiCD'])
+        }       
+        #self.EmhActionCode = "NR"
+        _mapped_dept = dept_map.get(emp.location.name, emp.location.name)  # Mapped
+        self.EmpNo= emp.shortEmpId()
+        self.EmpPrimaryEmpNo = emp.shortEmpId()
+        self.EmpUser = 'NSMITH'
+        self.EmpLastName= emp.LastName
+        self.EmpFirstName = emp.FirstName
+        self.EmpSinNo= '123456789' #plug
+        self.EmpStatus = 'A'
+        self.EmpDateOfBirth = '1999-01-01' #plug
+        self.EmpHireDate = '1999-01-02'#plug
+        self.EmpCompCode = 'HJR'
+        self.EmpDeptCode = _mapped_dept
+        self.EmpPrnCode = 'B'
+        self.EmpPygCode = 'PMOH' if _mapped_dept== 'PMG' else 'CNOH'#I think this will work, does it even matter though
+        self.EmpTrdCode = emp.job.name, 
+        self.EmpWrlCode = 'ATL'
+        self.EmpChargeOutRate = 3 #need provided info
+        self.EmpBillingRate = 3 #need provided info
+        self.EmpSecGrpEmpCode = 'MASTER'
+        self.EmpFilingStatus = '01'
+        self.EmpVUuid = ''
+        self.EmpCountryCode = 'US'
+        self.EmpStateCode = 'GA'
+        self.EmpZipCode = '30152'
+        self.EmpFlsaType = 'N'
+        self.EmpVertexGeocodeSource = 'M'
+        self.EmpType = 'S'
+        self.EmpFullPartTime = 'F'
+        self.EmpSubStatus = 'W'
+        self.EmpUnionized = 'N'
+        self.EmpAdjustedSeriviceDate = '1999-01-02'
+        self.EmpYearWorkingDays = 260.0
+        self.EmpYearWorkingHours = 2080.0
+        self.EmpUeValidFlag = 'Y'
+        self.EmpHomeDeptCode = _mapped_dept  # Mapped
+        self.EmpGlAccCode = '600.004'
+        self.EmpPayrollClearAccCode = '240.001'
+        self.EmpDrClearAccCode = '240.001'
+        self.EmpLevAcruGlAccCode = '240.001'
+        self.EmpLevClearAccCode = '240.001'
+        self.EmpAnnualSalary = 100 #I think this is acceptable as a plug unless it has a meaningful impact on charge/bill rate
+        self.EmpPreferPayRate = 'J'
+        self.EmpPreferChargeRate = 'J'
+        self.EmpPreferBillRate = 'J'
+        self.EmpDirectDepMethod = 'N'            

@@ -2,7 +2,7 @@ import csv, tomllib
 from sqlalchemy import select
 import pandas as pd
 from sqlalchemy.orm import Session
-from models import Employee, Location
+from models import Employee, Location, CMiC_Employee
 import sqlalchemy
 import requests
 
@@ -42,7 +42,9 @@ def get_employee_data(emp_id: str):  # Picks up all employees
 
          mapped_dept = dept_map.get(dept_name, dept_name)
          
+         #TODO: refactor as cmic_Employee object inside models using __init__ to build up. will remove need for this function
          return {
+            #"EmhActionCode": "NR"
             "EmpNo": emp.EmpId.split("-")[0][-6:],
             "EmpPrimaryEmpNo": emp.EmpId.split("-")[0][-6:],
             "EmpUser": 'NSMITH',
@@ -93,41 +95,45 @@ def get_employee_data(emp_id: str):  # Picks up all employees
 def main():
     engine = sqlalchemy.create_engine("sqlite:///DataFiles/utm.db", echo=False)
 
+    #TODO: compare list of employees to those already in CMiC. For any already in CMiC do not post.
+    #TODO: cmic get request of paginated employee ids
     with Session(engine) as session:
         # Step 1: Get all employee IDs
-        stmt = select(Employee.EmpId)
-        all_ids = session.execute(stmt).scalars().all()
+        stmt = select(Employee)
+        all_employees = session.execute(stmt).scalars().all()
 
         # Step 2: Filter those ending in '-PQCD4'
-        filtered_ids = [eid for eid in all_ids if eid.endswith('-PQCD4')]
+        #filtered_employees = [emp for emp in all_employees if emp.companyCode() =='PQCD4']
+        cmic_employees = [CMiC_Employee(emp) for emp in all_employees if emp.companyCode() == 'PQCD4']
 
-    if not filtered_ids:
+    if not cmic_employees:
         print("❌ No matching employees found.")
         return
 
     # Step 3: Loop and post each
-    print(f"📦 Found {len(filtered_ids)} matching employees. Starting POSTs...\n")
+    print(f"📦 Found {len(cmic_employees)} matching employees. Starting POSTs...\n")
 
     with requests.Session() as s:
         s.auth = my_auth
         endpoint = "hcm-rest-api/rest/1/pyemployee"
+        r = s.get(f"{host_url}/{endpoint}", params="finder?")
 
-        for emp_id in filtered_ids:
-            payload = get_employee_data(emp_id)
+        for cmic_emp in cmic_employees:
+            payload = cmic_emp.__dict__.copy()
             if not payload:
-                print(f"⚠️ Skipping {emp_id} – no data returned.")
+                print(f"⚠️ Skipping {cmic_emp} – no data returned.")
                 continue
 
             try:
                 r = s.post(f"{host_url}/{endpoint}", json=payload)
                 results.append({
-                    "EmpId": emp_id,
+                    "EmpNo": cmic_emp.EmpNo,
                     "Status": r.status_code,
                     "Response": r.text
                 })
             except Exception as e:
                 results.append({
-                    "EmpId": emp_id,
+                    "EmpNo": cmic_emp.EmpNo,
                     "Status": "ERROR",
                     "Response": str(e)
                 })
