@@ -51,12 +51,21 @@ class Paygroup(Base):
     description: Mapped[str] = mapped_column(String())
     def __repr__(self) -> str:
         return f"(Id={self.Id!r}, name={self.name!r}, description={self.description!r})"
+class CMiC_Project(Base):
+    __tablename__ = "CMiC_Project"
+    JobCode: Mapped[str] = mapped_column(primary_key=True)
+    JobName: Mapped[str] = mapped_column(String())
+    JobDefaultDeptCode: Mapped[str] = mapped_column(String())
+    JobCodeNoDots: Mapped[str] = mapped_column(String())
+    def __repr__(self) -> str:
+        return f"(Id={self.JobCode!r}, name={self.JobName!r}, jobCodeNoDots={self.JobCodeNoDots!r})"
 class Project(Base):
     __tablename__ = "Project"
     Id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str] = mapped_column(String())
+    name: Mapped[str] = mapped_column(ForeignKey("CMiC_Project.JobCodeNoDots"))
     description: Mapped[str] = mapped_column(String())
     #cmic_name: Mapped[str] = mapped_column(String())
+    cmic_project: Mapped["CMiC_Project"] = relationship()
     def __repr__(self) -> str:
         return f"(Id={self.Id!r}, name={self.name!r}, description={self.description!r})"
 class Location(Base):
@@ -194,8 +203,9 @@ class Timesheet_Entry:
         self.TshUnionCode = None
         if time_entry.job != None:
             self.TshTradeCode = time_entry.job.name #time->emp->jobid->job.name
-            self.TshJobdeptwoId = time_entry.project.name #time->projectid->project.name
             self.TshPhsacctwiId = time_entry.orglevel3.name
+        if time_entry.project.cmic_project != None:
+            self.TshJobdeptwoId = time_entry.project.cmic_project.JobCode #time->projectid->project.name
         self.TshNormalHours: float = time_entry.RegHr
         self.TshCompCode = time_entry.companyCode()
         self.TshWorkCompCode = self.TshCompCode

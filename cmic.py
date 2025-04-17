@@ -23,7 +23,7 @@ def post_timesheets_to_CMiC():
     results = []
 
     with sqlalchemy.orm.Session(engine) as session:
-        emp_stmt = select(Employee).where(Employee.PaygroupId == 18)#.where(Employee.EmpId == "000223310-PQCD4")
+        emp_stmt = select(Employee)#.where(Employee.PaygroupId == 18)#.where(Employee.EmpId == "000223310-PQCD4")
         employees: list[Employee] = session.execute(emp_stmt).scalars()
         with requests.Session() as s:
             for employee in employees:

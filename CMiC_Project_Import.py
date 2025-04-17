@@ -71,10 +71,10 @@ filtered = [
 ]
 
 # Create DataFrame
-df = pd.DataFrame(filtered)
+df = pd.DataFrame.from_records(filtered, index="JobCode")
 
 # Add new column that strips periods from JobCode
-df["JobCodeNoDots"] = df["JobCode"].str.replace(".", "", regex=False)
+df["JobCodeNoDots"] = df.index.str.replace(".", "", regex=False)
 
 # Get current working directory
 cwd = os.path.dirname(os.path.abspath(__file__))
@@ -82,9 +82,8 @@ cwd = os.path.dirname(os.path.abspath(__file__))
 # Save path
 csv_path = "DataFiles/CMiC_Project_Summary.csv"
 
-# Save to CSV
 #setup sqlite db file
 engine =sqlalchemy.create_engine("sqlite:///DataFiles/utm.db", echo=True)
-df.to_csv(csv_path, index=False)
+df.to_csv(csv_path, index=True)
 df.to_sql("CMiC_Project",engine,if_exists='replace')
 print(f"Saved filtered project data to {csv_path}")
