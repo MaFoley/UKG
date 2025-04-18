@@ -6,16 +6,6 @@ from models import Employee, Location, CMiC_Employee
 import sqlalchemy
 import requests
 
-with open("config.toml", "rb") as f:
-    endpoint = tomllib.load(f)
-
-#establish CMiC API
-host_url = endpoint["CMiC_Base"]["base_url"]
-username = endpoint["CMiC_Base"]["username"]
-password = endpoint["CMiC_Base"]["password"]
-my_auth = requests.auth.HTTPBasicAuth(username, password)
-results = []
-
 #dept map
 dept_map_df = pd.read_csv("DataFiles/DEPARTMENT MAP.csv", header=0, usecols=[1, 3])
 dept_map_df.columns = ['UKGDName', 'CMiCD']
@@ -23,7 +13,7 @@ dept_map = {
     str(k).strip(): str(v).strip()
     for k, v in zip(dept_map_df['UKGDName'], dept_map_df['CMiCD'])
 }
-
+#deprecated?
 def get_employee_data(emp_id: str):  # Picks up all employees
     engine = sqlalchemy.create_engine("sqlite:///DataFiles/utm.db", echo=False)
 
@@ -94,6 +84,16 @@ def get_employee_data(emp_id: str):  # Picks up all employees
 
 def main():
     engine = sqlalchemy.create_engine("sqlite:///DataFiles/utm.db", echo=False)
+    with open("config.toml", "rb") as f:
+        endpoint = tomllib.load(f)
+
+    #establish CMiC API
+    host_url = endpoint["CMiC_Base"]["base_url"]
+    username = endpoint["CMiC_Base"]["username"]
+    password = endpoint["CMiC_Base"]["password"]
+    my_auth = requests.auth.HTTPBasicAuth(username, password)
+    results = []
+
 
     #TODO: compare list of employees to those already in CMiC. For any already in CMiC do not post.
     #TODO: cmic get request of paginated employee ids
