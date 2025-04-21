@@ -49,6 +49,13 @@ class Paygroup(Base):
     Id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String())
     description: Mapped[str] = mapped_column(String())
+    def get_cmic_payrun(self):
+        if self.name == "HJRC":
+            return 'B'
+        elif self.name == "HJRU":
+            return 'W'
+        else:
+            return 'Not valid Pay Run'
     def __repr__(self) -> str:
         return f"(Id={self.Id!r}, name={self.name!r}, description={self.description!r})"
 class CMiC_Project(Base):
@@ -268,7 +275,7 @@ class CMiC_Employee:
         self.EmpHireDate = '1999-01-02'#plug
         self.EmpCompCode = 'HJR'
         self.EmpDeptCode = _mapped_dept
-        self.EmpPrnCode = 'B'
+        self.EmpPrnCode = emp.paygroup.get_cmic_payrun()
         self.EmpPygCode = 'PMOH' if _mapped_dept== 'PMG' else 'CNOH'#I think this will work, does it even matter though
         self.EmpTrdCode = emp.job.name, 
         self.EmpWrlCode = 'ATL'
@@ -305,3 +312,23 @@ class CMiC_Employee:
         if not isinstance(other, self.__class__):
             return False
         return self.EmpNo == other.EmpNo
+class JCJobCategory:
+    def __init__(self, timesheet_entry: Timesheet_Entry):
+        self.JcatCompCode = timesheet_entry.TshCompCode
+        self.JcatJobCode = timesheet_entry.TshJobdeptwoId
+        self.JcatPhsCode = timesheet_entry.TshPhsacctwiId
+        self.JcatCode = "L"
+        self.JcatCatActiveFlag = "Y"
+        self.JcatExclCostWip = "N"
+        self.JcatLabourForecastFlag = "N"
+        self.JcatCostToComplOvrdFlg = "N"
+        self.JcatExclCostBudgWip = "Y"
+    def __repr__(self):
+        repr_str = f"{self.__class__.__name__}"
+        repr_str += '('
+        
+        for key, val in self.__dict__.items():
+            val       = f"'{val}'" if isinstance(val, str) else val
+            repr_str += f"{key}={val}\n, "
+        
+        return repr_str.strip(", ") + ')'

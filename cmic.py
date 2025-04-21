@@ -1,42 +1,51 @@
 import requests, json, csv, tomllib
 from datetime import datetime
-from models import Time, Employee, Timesheet_Entry
+from models import Time, Employee, Timesheet_Entry, JCJobCategory
 from sqlalchemy import select
 import sqlalchemy
 from pathlib import Path
 from posting_log_ingest import get_posted_keys
+from CMiC_Project_Import import cmic_api_results
 
-
-def post_timesheets_to_CMiC():
+UKGHJRCOMPANYCODE = 'PQCD4'
+def create_session() -> tuple[str, requests.auth]:
     with open("config.toml", "rb") as f:
         endpoint = tomllib.load(f)
     with open("secrets.toml","rb") as f:
         endpoint.update(tomllib.load(f))
 
     #establish CMiC API
-    host_url = endpoint["CMiC_Base"]["base_url"]
+    host_url = endpoint["CMiC_Base"]["host_url"]
     username = endpoint["CMiC_Base"]["username"]
     password = endpoint["CMiC_Base"]["password"]
     my_auth = requests.auth.HTTPBasicAuth(username, password)
+    return host_url, my_auth
 
+
+
+def post_timesheets_to_CMiC():
+    #establish CMiC API
+    host_url, my_auth = create_session()
     posted_entries = get_posted_keys()
 
     engine = sqlalchemy.create_engine("sqlite:///DataFiles/utm.db", echo=False)
     results = []
 
     with sqlalchemy.orm.Session(engine) as session:
-        emp_stmt = select(Employee)#.where(Employee.PaygroupId == 18)#.where(Employee.EmpId == "000223310-PQCD4")
+        emp_stmt = select(Employee).where(Employee.Active == 'A')#.where(Employee.EmpId == "000223310-PQCD4")
         employees: list[Employee] = session.execute(emp_stmt).scalars()
         with requests.Session() as s:
+            s.auth = my_auth
+            endpoint = r'hcm-rest-api/rest/1/pyemptimesheet'
             for employee in employees:
                 if not employee.time_entries:
                     print(f"Employee {employee.EmpId} {employee.LastName}, {employee.FirstName} has no time in current pay period")
                     continue
+                elif employee.companyCode() != UKGHJRCOMPANYCODE:
+                    print(f"Employee {employee.EmpId} not in HJR")
+                    continue
                 # joined_stmt = select(Time).where(Time.EmpId == employee.EmpId)
                 # timesheets = session.execute(joined_stmt)
-                s.auth = my_auth
-                endpoint = r'hcm-rest-api/rest/1/pyemptimesheet'
-
                 for t in employee.time_entries:
                     entry = Timesheet_Entry(t)
                     entry_key = (entry.TshEmpNo.strip(), entry.TshDate.strip(), entry.TshPrnCode.strip())
@@ -55,6 +64,8 @@ def post_timesheets_to_CMiC():
                     payload = entry.__dict__.copy()
 
                     try:
+                        # jobcodecostcode = JCJobCategory(entry)
+                        # print(jobcodecostcode)
                         r = s.post(f"{host_url}/{endpoint}", json=payload)
                         status = r.status_code
                         resp = r.text
@@ -88,6 +99,14 @@ def post_timesheets_to_CMiC():
 
     print(f"Post log written to {output_file}")
 
+def jobCodeCostCode():
+    host_url, my_auth = create_session()
+    with requests.Session() as s:
+        s.auth = my_auth
+        endpoint_url = f"{host_url}/jc-rest-api/rest/1/jcjobcategory?finder=selectJobCategory;jobCode=SO1932.4"
+        for x in cmic_api_results(endpoint_url=endpoint_url,s=s):
+            print(x)
 
 if __name__ == "__main__":
+    # jobCodeCostCode()
     post_timesheets_to_CMiC()

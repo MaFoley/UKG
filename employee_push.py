@@ -86,6 +86,8 @@ def main():
     engine = sqlalchemy.create_engine("sqlite:///DataFiles/utm.db", echo=False)
     with open("config.toml", "rb") as f:
         endpoint = tomllib.load(f)
+    with open("secrets.toml","rb") as f:
+        endpoint.update(tomllib.load(f))
 
     #establish CMiC API
     host_url = endpoint["CMiC_Base"]["host_url"]
@@ -141,7 +143,7 @@ def main():
         # After loop:
         with open("DataFiles/employee_post_results.csv", "w", newline="") as f:
             print(f"writing {len(results)} records to file")
-            writer = csv.DictWriter(f, fieldnames=["EmpId", "Status", "Response"])
+            writer = csv.DictWriter(f, fieldnames=["EmpNo", "Status", "Response"])
             writer.writeheader()
             writer.writerows(results)
 
