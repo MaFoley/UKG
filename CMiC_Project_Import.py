@@ -9,6 +9,8 @@ def load_cmic_projects():
 
     with open("config.toml", "rb") as f:
         endpoint = tomllib.load(f)
+    with open("secrets.toml","rb") as f:
+        endpoint.update(tomllib.load(f))
     #establish CMiC API
     base_url = endpoint["CMiC_Base"]["host_url"]
     username = endpoint["CMiC_Base"]["username"]

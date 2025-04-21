@@ -16,11 +16,13 @@ def load_ukg(startDate: str|datetime, endDate: str|datetime):
         filterEndDate = endDate
     with open("config.toml", "rb") as f:
         endpoint = tomllib.load(f)
+    with open("secrets.toml","rb") as f:
+        endpoint.update(tomllib.load(f))
 
     #establish UKG API
-    host_url = endpoint["Base"]["base_url"]
-    username = endpoint["Base"]["username"]
-    password = endpoint["Base"]["password"]
+    host_url = endpoint["UTM_Base"]["base_url"]
+    username = endpoint["UTM_Base"]["username"]
+    password = endpoint["UTM_Base"]["password"]
     my_auth = requests.auth.HTTPBasicAuth(username, password)
     s = requests.Session()
     s.auth = my_auth

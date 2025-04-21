@@ -227,7 +227,15 @@ class Timesheet_Entry:
         periodEndDate = datetime(2024,12,29)
         delta = date - periodEndDate
         return delta.days // 14 + 1
-            
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+        return all(
+            self.TshEmpNo == other.TshEmpNo
+            ,self.TshDate == other.TshDate
+            ,self.TshJobdeptwoId == other.TshJobdeptwoId
+            ,self.TshPhsacctwiId == other.TshPhsacctwiId 
+        )      
     def __str__(self):
         return self.__repr__()
     def __repr__(self):
@@ -293,3 +301,7 @@ class CMiC_Employee:
         self.EmpPreferChargeRate = 'J'
         self.EmpPreferBillRate = 'J'
         self.EmpDirectDepMethod = 'N'            
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+        return self.EmpNo == other.EmpNo

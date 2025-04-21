@@ -88,7 +88,7 @@ def main():
         endpoint = tomllib.load(f)
 
     #establish CMiC API
-    host_url = endpoint["CMiC_Base"]["base_url"]
+    host_url = endpoint["CMiC_Base"]["host_url"]
     username = endpoint["CMiC_Base"]["username"]
     password = endpoint["CMiC_Base"]["password"]
     my_auth = requests.auth.HTTPBasicAuth(username, password)

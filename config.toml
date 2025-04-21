@@ -1,7 +1,5 @@
-[Base]
+[UTM_Base]
 base_url= 'https://ke41.ulticlock.com/UtmOdataServices/api'
-username= 'EnterUserName'
-password= 'EnterPassWord'
 [primary_endpoints]
 Employee= "EmpId"
 Time = ""
@@ -27,5 +25,3 @@ Time = ""
 #    "Timesheet"
 [CMiC_Base]
 host_url = 'https://nova-api-test.cmiccloud.com/cmictest'
-username = "HJR||NSMITH"
-password = "EnterPassWord"

@@ -10,6 +10,8 @@ from posting_log_ingest import get_posted_keys
 def post_timesheets_to_CMiC():
     with open("config.toml", "rb") as f:
         endpoint = tomllib.load(f)
+    with open("secrets.toml","rb") as f:
+        endpoint.update(tomllib.load(f))
 
     #establish CMiC API
     host_url = endpoint["CMiC_Base"]["base_url"]
