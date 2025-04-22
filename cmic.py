@@ -32,7 +32,7 @@ def post_timesheets_to_CMiC():
     results = []
 
     with sqlalchemy.orm.Session(engine) as session:
-        emp_stmt = select(Employee).where(Employee.Active == 'A')#.where(Employee.EmpId == "000223310-PQCD4")
+        emp_stmt = select(Employee).where(Employee.Active == 'A').where(Employee.PaygroupId == 18)#.where(Employee.EmpId == "000223310-PQCD4")
         employees: list[Employee] = session.execute(emp_stmt).scalars()
         with requests.Session() as s:
             s.auth = my_auth
@@ -73,7 +73,7 @@ def post_timesheets_to_CMiC():
                         status = "ERROR"
                         resp = str(e)
 
-                    print(json.dumps(payload, indent=4))
+                    print(json.dumps(payload,indent=None))
 
                     results.append({
                         "EmpNo": entry.TshEmpNo,
@@ -100,13 +100,33 @@ def post_timesheets_to_CMiC():
     print(f"Post log written to {output_file}")
 
 def jobCodeCostCode():
+    #establish CMiC API
     host_url, my_auth = create_session()
-    with requests.Session() as s:
-        s.auth = my_auth
-        endpoint_url = f"{host_url}/jc-rest-api/rest/1/jcjobcategory?finder=selectJobCategory;jobCode=SO1932.4"
-        for x in cmic_api_results(endpoint_url=endpoint_url,s=s):
-            print(x)
+    posted_entries = get_posted_keys()
 
+    engine = sqlalchemy.create_engine("sqlite:///DataFiles/utm.db", echo=False)
+    results = []
+
+    with sqlalchemy.orm.Session(engine) as session:
+        emp_stmt = select(Employee).where(Employee.Active == 'A')#.where(Employee.EmpId == "000223310-PQCD4")
+        employees: list[Employee] = session.execute(emp_stmt).scalars()
+        host_url, my_auth = create_session()
+        with requests.Session() as s:
+            s.auth = my_auth
+            for employee in employees:
+                for entry in employee.time_entries:
+                    cmic_entry = Timesheet_Entry(entry)
+                    jccc = JCJobCategory(cmic_entry)
+                    finder_str = f"?finder=selectJobCategory;jobCode={cmic_entry.TshJobdeptwoId}"
+                    endpoint_url = f"{host_url}/jc-rest-api/rest/1/jcjobcategory{finder_str}"
+                    valid_combos = [ (jccc.get("JcatJobCode",""),jccc.get("JcatPhsCode",""), jccc.get("JcatCode"))
+                                    for jccc in cmic_api_results(endpoint_url=endpoint_url,s=s)
+                    ]
+                    if (jccc.JcatJobCode, jccc.JcatPhsCode,jccc.JcatCode) not in valid_combos:
+                        print(f"invalid combo   {jccc!r}")
+                    else:
+                        print("combo found")
+        print(valid_combos)
 if __name__ == "__main__":
     # jobCodeCostCode()
     post_timesheets_to_CMiC()
