@@ -319,6 +319,7 @@ class JCJobCategory:
         self.JcatPhsCode = timesheet_entry.TshPhsacctwiId
         self.JcatCode = "L"
         self.JcatCatActiveFlag = "Y"
+        self.JcatPhaseActiveFlag = "Y"
         self.JcatExclCostWip = "N"
         self.JcatLabourForecastFlag = "N"
         self.JcatCostToComplOvrdFlg = "N"

@@ -30,7 +30,7 @@ def post_timesheets_to_CMiC():
 
     engine = sqlalchemy.create_engine("sqlite:///DataFiles/utm.db", echo=False)
     results = []
-
+    retry_time_entries = []
     with sqlalchemy.orm.Session(engine) as session:
         emp_stmt = select(Employee).where(Employee.Active == 'A').where(Employee.PaygroupId == 18)#.where(Employee.EmpId == "000223310-PQCD4")
         employees: list[Employee] = session.execute(emp_stmt).scalars()
@@ -72,7 +72,8 @@ def post_timesheets_to_CMiC():
                     except Exception as e:
                         status = "ERROR"
                         resp = str(e)
-
+                    if status == 400 and "Cost Code Code".lower() in resp.lower():
+                        retry_time_entries.append(entry)
                     print(json.dumps(payload,indent=None))
 
                     results.append({
@@ -82,7 +83,45 @@ def post_timesheets_to_CMiC():
                         "Status": status,
                         "Response": resp
                     })
+            for retry_entry in retry_time_entries:
+                jobcodecostcode = JCJobCategory(retry_entry)
+                r = s.post(f"{host_url}/jc-rest-api/rest/1/jcjobcategory"
+                            , json=jobcodecostcode.__dict__.copy())
+                entry_key = (retry_entry.TshEmpNo.strip(), retry_entry.TshDate.strip(), retry_entry.TshPrnCode.strip())
 
+                if entry_key in posted_entries:
+                    print(f"Already Posted, {entry_key} - skipping")
+                    results.append({
+                        "EmpNo": retry_entry.TshEmpNo,
+                        "WorkDate": retry_entry.TshDate,
+                        "PrnCode": retry_entry.TshPrnCode,
+                        "Status": "SKIPPED",
+                        "Response": "{}"
+                    })
+                    continue
+
+                payload = retry_entry.__dict__.copy()
+
+                try:
+                    # jobcodecostcode = JCJobCategory(entry)
+                    # print(jobcodecostcode)
+                    r = s.post(f"{host_url}/{endpoint}", json=payload)
+                    status = r.status_code
+                    resp = r.text
+                except Exception as e:
+                    status = "ERROR"
+                    resp = str(e)
+                # if status == 400 and "Cost Code Code".lower() in resp.lower():
+                #     retry_time_entries.append(entry)
+                print(json.dumps(payload,indent=None))
+
+                results.append({
+                    "EmpNo": retry_entry.TshEmpNo,
+                    "WorkDate": retry_entry.TshDate,
+                    "PrnCode": retry_entry.TshPrnCode,
+                    "Status": status,
+                    "Response": resp
+                })
     timestamp = datetime.now().strftime("%m%d%Y_%H%M%S")
     output_file = f"DataFiles/PostResult/PostResults_{timestamp}.csv"
 
