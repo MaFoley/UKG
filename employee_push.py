@@ -3,6 +3,7 @@ from sqlalchemy import select
 import pandas as pd
 from sqlalchemy.orm import Session
 from models import Employee, Location, CMiC_Employee
+from CMiC_Project_Import import cmic_api_results
 import sqlalchemy
 import requests
 
@@ -101,8 +102,8 @@ def main():
     #TODO: cmic get request of paginated employee ids
     with Session(engine) as session:
         # Step 1: Get all employee IDs
-        stmt = select(Employee)
-        all_employees = session.execute(stmt).scalars().all()
+        emp_stmt = select(Employee).where(Employee.Active == 'A').where(Employee.PaygroupId == 18).where(Employee.OrgLevel3Id !=2)#.where(Employee.EmpId == "000223310-PQCD4")
+        all_employees = session.execute(emp_stmt).scalars().all()
 
         # Step 2: Filter those ending in '-PQCD4'
         #filtered_employees = [emp for emp in all_employees if emp.companyCode() =='PQCD4']
@@ -118,9 +119,15 @@ def main():
     with requests.Session() as s:
         s.auth = my_auth
         endpoint = "hcm-rest-api/rest/1/pyemployee"
-        r = s.get(f"{host_url}/{endpoint}", params="finder?")
+        existing_employees = [emp["EmpNo"]
+                               for emp in \
+                                cmic_api_results(f"{host_url}/{endpoint}",s, limit=500)]
 
         for cmic_emp in cmic_employees:
+            if cmic_emp.EmpNo in existing_employees:
+                cmic_emp.EmhActionCode = "CH"
+            else:
+                cmic_emp.EmhActionCode = "NR"
             payload = cmic_emp.__dict__.copy()
             if not payload:
                 print(f"⚠️ Skipping {cmic_emp} – no data returned.")
@@ -131,7 +138,7 @@ def main():
                 results.append({
                     "EmpNo": cmic_emp.EmpNo,
                     "Status": r.status_code,
-                    "Response": r.text
+                    "Response": r.text.strip('\n')
                 })
             except Exception as e:
                 results.append({

@@ -1,4 +1,5 @@
 import requests, json, csv, tomllib
+import pandas as pd
 from datetime import datetime
 from models import Time, Employee, Timesheet_Entry, JCJobCategory
 from sqlalchemy import select
@@ -23,16 +24,16 @@ def create_session() -> tuple[str, requests.auth]:
 
 
 
-def post_timesheets_to_CMiC():
+def post_timesheets_to_CMiC(testing: bool=False) -> pd.DataFrame:
     #establish CMiC API
     host_url, my_auth = create_session()
-    posted_entries = get_posted_keys()
+    posted_entries = get_posted_keys() if testing == False else {}
 
     engine = sqlalchemy.create_engine("sqlite:///DataFiles/utm.db", echo=False)
     results = []
     retry_time_entries = []
     with sqlalchemy.orm.Session(engine) as session:
-        emp_stmt = select(Employee).where(Employee.Active == 'A').where(Employee.PaygroupId == 18)#.where(Employee.EmpId == "000223310-PQCD4")
+        emp_stmt = select(Employee).where(Employee.Active == 'A').where(Employee.PaygroupId == 18).where(Employee.OrgLevel3Id !=2)#.where(Employee.EmpId == "000223310-PQCD4")
         employees: list[Employee] = session.execute(emp_stmt).scalars()
         with requests.Session() as s:
             s.auth = my_auth
@@ -51,13 +52,14 @@ def post_timesheets_to_CMiC():
                     entry_key = (entry.TshEmpNo.strip(), entry.TshDate.strip(), entry.TshPrnCode.strip())
 
                     if entry_key in posted_entries:
-                        print(f"Already Posted, {entry_key} - skipping")
+                        # print(f"Already Posted, {entry_key} - skipping")
                         results.append({
                             "EmpNo": entry.TshEmpNo,
                             "WorkDate": entry.TshDate,
                             "PrnCode": entry.TshPrnCode,
                             "Status": "SKIPPED",
-                            "Response": "{}"
+                            "Response": "{}",
+                            "Hours": entry.TshNormalHours
                         })
                         continue
 
@@ -74,14 +76,15 @@ def post_timesheets_to_CMiC():
                         resp = str(e)
                     if status == 400 and "Cost Code Code".lower() in resp.lower():
                         retry_time_entries.append(entry)
-                    print(json.dumps(payload,indent=None))
+                    # print(json.dumps(payload,indent=None))
 
                     results.append({
                         "EmpNo": entry.TshEmpNo,
                         "WorkDate": entry.TshDate,
                         "PrnCode": entry.TshPrnCode,
                         "Status": status,
-                        "Response": resp
+                        "Response": resp,
+                        "Hours": entry.TshNormalHours
                     })
             for retry_entry in retry_time_entries:
                 jobcodecostcode = JCJobCategory(retry_entry)
@@ -90,13 +93,14 @@ def post_timesheets_to_CMiC():
                 entry_key = (retry_entry.TshEmpNo.strip(), retry_entry.TshDate.strip(), retry_entry.TshPrnCode.strip())
 
                 if entry_key in posted_entries:
-                    print(f"Already Posted, {entry_key} - skipping")
+                    # print(f"Already Posted, {entry_key} - skipping")
                     results.append({
                         "EmpNo": retry_entry.TshEmpNo,
                         "WorkDate": retry_entry.TshDate,
                         "PrnCode": retry_entry.TshPrnCode,
                         "Status": "SKIPPED",
-                        "Response": "{}"
+                        "Response": "{}",
+                        "Hours": entry.TshNormalHours
                     })
                     continue
 
@@ -113,14 +117,15 @@ def post_timesheets_to_CMiC():
                     resp = str(e)
                 # if status == 400 and "Cost Code Code".lower() in resp.lower():
                 #     retry_time_entries.append(entry)
-                print(json.dumps(payload,indent=None))
+                # print(json.dumps(payload,indent=None))
 
                 results.append({
                     "EmpNo": retry_entry.TshEmpNo,
                     "WorkDate": retry_entry.TshDate,
                     "PrnCode": retry_entry.TshPrnCode,
                     "Status": status,
-                    "Response": resp
+                    "Response": resp,
+                    "Hours": retry_entry.TshNormalHours
                 })
     timestamp = datetime.now().strftime("%m%d%Y_%H%M%S")
     output_file = f"DataFiles/PostResult/PostResults_{timestamp}.csv"
@@ -128,7 +133,7 @@ def post_timesheets_to_CMiC():
     source_name = output_file.split("/")[-1]
 
     with open(output_file, mode="w", newline="") as csvfile:
-        fieldnames = ["EmpNo", "WorkDate", "PrnCode", "Status", "Response", "SourceFile"]
+        fieldnames = ["EmpNo", "WorkDate", "PrnCode", "Status", "Response","Hours", "SourceFile"]
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
         for row in results:
@@ -137,6 +142,8 @@ def post_timesheets_to_CMiC():
             
 
     print(f"Post log written to {output_file}")
+    df_results = pd.read_csv(output_file)
+    return df_results
 
 def jobCodeCostCode():
     #establish CMiC API

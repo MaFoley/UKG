@@ -91,12 +91,31 @@ def cmic_api_results(endpoint_url: str, s: requests.Session, limit: int = 100)->
 
         offset += len(items)
         if not has_more:
-            print(f"No more pages. Loaded {offset} jobs")
+            print(f"No more pages. Loaded {offset} items")
             break
 
         if offset > max_offset_limit:
             print("Max offset reached.")
             break
     # return all_items
+def create_session() -> tuple[str, requests.auth]:
+    with open("config.toml", "rb") as f:
+        endpoint = tomllib.load(f)
+    with open("secrets.toml","rb") as f:
+        endpoint.update(tomllib.load(f))
+
+    #establish CMiC API
+    host_url = endpoint["CMiC_Base"]["host_url"]
+    username = endpoint["CMiC_Base"]["username"]
+    password = endpoint["CMiC_Base"]["password"]
+    my_auth = requests.auth.HTTPBasicAuth(username, password)
+    return host_url, my_auth
+
 if __name__ == "__main__":
-    load_cmic_projects()
+    # load_cmic_projects()
+    host_url, my_auth = create_session()
+    with requests.Session() as s:
+        s.auth = my_auth
+        endpoint = "hcm-rest-api/rest/1/pyemployee"
+        existing_employees = [emp["EmpNo"] for emp in cmic_api_results(f"{host_url}/{endpoint}",s, limit=500)]
+    print(existing_employees)

@@ -262,7 +262,8 @@ class CMiC_Employee:
             str(k).strip(): str(v).strip()
             for k, v in zip(dept_map_df['UKGDName'], dept_map_df['CMiCD'])
         }       
-        #self.EmhActionCode = "NR"
+        #default to new record action code
+        self.EmhActionCode = "NR"
         _mapped_dept = dept_map.get(emp.location.name, emp.location.name)  # Mapped
         self.EmpNo= emp.shortEmpId()
         self.EmpPrimaryEmpNo = emp.shortEmpId()
@@ -277,7 +278,7 @@ class CMiC_Employee:
         self.EmpDeptCode = _mapped_dept
         self.EmpPrnCode = emp.paygroup.get_cmic_payrun()
         self.EmpPygCode = 'PMOH' if _mapped_dept== 'PMG' else 'CNOH'#I think this will work, does it even matter though
-        self.EmpTrdCode = emp.job.name, 
+        self.EmpTrdCode = emp.job.name 
         self.EmpWrlCode = 'ATL'
         self.EmpChargeOutRate = 3 #need provided info
         self.EmpBillingRate = 3 #need provided info
