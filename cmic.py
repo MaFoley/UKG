@@ -34,6 +34,7 @@ def post_timesheets_to_CMiC(testing: bool=False) -> pd.DataFrame:
     retry_time_entries = []
     with sqlalchemy.orm.Session(engine) as session:
         emp_stmt = select(Employee).where(Employee.Active == 'A').where(Employee.PaygroupId == 18).where(Employee.OrgLevel3Id !=2)#.where(Employee.EmpId == "000223310-PQCD4")
+        # emp_stmt = select(Employee).where(Employee.EmpId == "000020828-PQCD4")
         employees: list[Employee] = session.execute(emp_stmt).scalars()
         with requests.Session() as s:
             s.auth = my_auth
@@ -49,6 +50,18 @@ def post_timesheets_to_CMiC(testing: bool=False) -> pd.DataFrame:
                 # timesheets = session.execute(joined_stmt)
                 for t in employee.time_entries:
                     entry = Timesheet_Entry(t)
+                    if entry.TshJobdeptwoId == None:
+                        results.append({
+                            "EmpNo": entry.TshEmpNo,
+                            "WorkDate": entry.TshDate,
+                            "PrnCode": entry.TshPrnCode,
+                            "Status": "SKIPPED",
+                            "Response": "No Job Code for employee",
+                            "Hours": entry.TshNormalHours
+                        })
+                        continue
+
+
                     entry_key = (entry.TshEmpNo.strip(), entry.TshDate.strip(), entry.TshPrnCode.strip())
 
                     if entry_key in posted_entries:
@@ -175,4 +188,4 @@ def jobCodeCostCode():
         print(valid_combos)
 if __name__ == "__main__":
     # jobCodeCostCode()
-    post_timesheets_to_CMiC()
+    post_timesheets_to_CMiC(testing=True)

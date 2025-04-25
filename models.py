@@ -211,8 +211,14 @@ class Timesheet_Entry:
         if time_entry.job != None:
             self.TshTradeCode = time_entry.job.name #time->emp->jobid->job.name
             self.TshPhsacctwiId = time_entry.orglevel3.name
+        else:
+            self.TshTradeCode = None
+            self.TshPhsacctwiId = None
+
         if time_entry.project.cmic_project != None:
             self.TshJobdeptwoId = time_entry.project.cmic_project.JobCode #time->projectid->project.name
+        else:
+            self.TshJobdeptwoId = None
         self.TshNormalHours: float = time_entry.RegHr
         self.TshCompCode = time_entry.companyCode()
         self.TshWorkCompCode = self.TshCompCode
@@ -334,3 +340,16 @@ class JCJobCategory:
             repr_str += f"{key}={val}\n, "
         
         return repr_str.strip(", ") + ')'
+class CMiCTradeCode:
+    def __init__(self, ukg_employee: Employee):
+        self.TrdCode = ukg_employee.job.name
+        self.TrdDescription = ukg_employee.job.description
+        self.TrdShortDesc = self.TrdDescription[:10]
+        self.TrdEeoClass = "NA"
+        self.TrdLastUpdDate = ukg_employee.HireDate
+        self.TrdRpAvailblFlag = "Y"
+        self.TrdCertFlag = "Y"
+        self.TrdType = "T"
+        self.TrdUser = "NSMITH"
+        self.TrdApprentice = "J"
+        self.TrdApprenticeDesc = "Journeyman"

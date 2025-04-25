@@ -2,7 +2,7 @@ import csv, tomllib
 from sqlalchemy import select
 import pandas as pd
 from sqlalchemy.orm import Session
-from models import Employee, Location, CMiC_Employee
+from models import Employee, Location, CMiC_Employee, CMiCTradeCode
 from CMiC_Project_Import import cmic_api_results
 import sqlalchemy
 import requests
@@ -96,6 +96,7 @@ def main():
     password = endpoint["CMiC_Base"]["password"]
     my_auth = requests.auth.HTTPBasicAuth(username, password)
     results = []
+    cmic_employees = []
 
 
     #TODO: compare list of employees to those already in CMiC. For any already in CMiC do not post.
@@ -106,8 +107,23 @@ def main():
         all_employees = session.execute(emp_stmt).scalars().all()
 
         # Step 2: Filter those ending in '-PQCD4'
+        with requests.Session() as s:
+            s.auth = my_auth
+            endpoint = "hcm-rest-api/rest/1/pytrades"
+            field_param = "?fields=TrdCode"
+            existing_trade_codes = [ tc["TrdCode"]
+                                    for tc in \
+                                    cmic_api_results(f"{host_url}/{endpoint}{field_param}",s,limit=500)]
         #filtered_employees = [emp for emp in all_employees if emp.companyCode() =='PQCD4']
-        cmic_employees = [CMiC_Employee(emp) for emp in all_employees if emp.companyCode() == 'PQCD4']
+        for emp in all_employees:
+            if emp.companyCode() == 'PQCD4':
+                cmic_employees.append(CMiC_Employee(emp))
+            if emp.job.name not in existing_trade_codes:
+                cmic_trade = CMiCTradeCode(emp)
+                payload = cmic_trade.__dict__.copy()
+                r = requests.post(f"{host_url}/{endpoint}",json=payload,auth=my_auth)
+                print(r)
+            
 
     if not cmic_employees:
         print("❌ No matching employees found.")
