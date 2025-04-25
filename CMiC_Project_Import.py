@@ -26,7 +26,7 @@ def load_cmic_projects():
             "JobName": job.get("JobName"),
             "JobDefaultDeptCode": job.get("JobDefaultDeptCode")
         }
-        for job in cmic_api_results(f"{base_url}/jc-rest-api/rest/1/jcjob", s)
+        for job in cmic_api_results(f"{base_url}/jc-rest-api/rest/1/jcjob", s, limit=500)
     ]
 
     # Create DataFrame
@@ -112,7 +112,7 @@ def create_session() -> tuple[str, requests.auth]:
     return host_url, my_auth
 
 if __name__ == "__main__":
-    # load_cmic_projects()
+    load_cmic_projects()
     host_url, my_auth = create_session()
     with requests.Session() as s:
         s.auth = my_auth
