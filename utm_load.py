@@ -33,7 +33,6 @@ def load_ukg(startDate: str|datetime, endDate: str|datetime):
     models.Base.metadata.drop_all(engine)
     models.Base.metadata.create_all(engine)
 
-    load_attributes(s,attributes=attributes,host_url=host_url,engine=engine)
 
     print(f'trying Employee...',end="")
     r = s.get(f'{host_url}/Employee')
@@ -44,7 +43,7 @@ def load_ukg(startDate: str|datetime, endDate: str|datetime):
     #time must be filtered or else will timeout endpoint
     payload = f'$filter=WorkDate ge {filterStartDate} and WorkDate le {filterEndDate}&OrgLevel1Id eq {ORGLEVEL1ID}'
     try:
-        print(f'trying Time...')
+        print(f'trying Time...',end="")
         r = s.get(f'{host_url}/Time',params=payload)
         time_df = pd.DataFrame.from_records(r.json()["value"], index="Id")
         time_df.to_sql("Time",engine,if_exists='replace')
@@ -52,24 +51,26 @@ def load_ukg(startDate: str|datetime, endDate: str|datetime):
     except:
         print("ERR")
     #join attributes to employees and time before sending to .csv for easy inspection
-    for ep, idColumn in attributes.items():
-        content = pd.read_csv(f'{OUTPUT_FILE_PATH}/{ep}.csv', index_col="Id")
-        employee_df = employee_df.merge(content, left_on= [idColumn]
-                                        , right_index=True
-                                        )
-        time_df = time_df.merge(content, left_on= [idColumn]
-                                        , right_index=True
-                                        )
+    attributes_dataframes_dict = load_attributes(
+        s,attributes=attributes,host_url=host_url,engine=engine
+        )
+    employee_df = combine_df(employee_df,attributes_dataframes_dict)
+    time_df = combine_df(time_df, attributes_dataframes_dict)
     employee_df.to_csv(f'{OUTPUT_FILE_PATH}/Employee.csv')
     time_df.to_csv(f'{OUTPUT_FILE_PATH}/Time.csv')
     s.close()
     engine.dispose()
+def combine_df(main_df: pd.DataFrame, attr_dataframes_dict: dict[str, pd.DataFrame])-> pd.DateOffset:
+    for idColumn, content_dataframe in attr_dataframes_dict.items():
+        main_df = main_df.merge(content_dataframe,left_on=[idColumn],right_index=True)
+    return main_df
 def get_date_string(d: datetime):
     format_string = '%Y-%m-%d'
     return d.strftime(format_string)
-def load_attributes(s: requests.Session, attributes: dict, host_url: str, engine: sqlalchemy.Engine):
+def load_attributes(s: requests.Session, attributes: dict, host_url: str, engine: sqlalchemy.Engine)-> dict[str, pd.DataFrame]:
     #idColumn is the column name in the employee table
-    for ep in attributes.keys():
+    result_dict = dict()
+    for ep, idColumn in attributes.items():
         try:
             print(f'trying {ep}...',end="")
             r = s.get(f'{host_url}/{ep}')
@@ -89,7 +90,9 @@ def load_attributes(s: requests.Session, attributes: dict, host_url: str, engine
                                 }
                                 ,errors='raise')
         content.to_csv(f'{OUTPUT_FILE_PATH}/{ep}.csv')
+        result_dict[idColumn] = content
         print(f"record counts for {ep}:{len(content.index)}")
+    return result_dict
 if __name__ == "__main__":
     startdate = datetime(2025,4,6)
     enddate = datetime(2025,4,12)
