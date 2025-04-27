@@ -262,6 +262,7 @@ class Timesheet_Entry:
         return repr_str.strip(", ") + ')'
 class CMiC_Employee:   
     def __init__(self, emp: Employee):
+        #TODO: add column to database and remove from init file
         dept_map_df = pd.read_csv("DataFiles/DEPARTMENT MAP.csv", header=0, usecols=[1, 3])
         dept_map_df.columns = ['UKGDName', 'CMiCD']
         dept_map = {

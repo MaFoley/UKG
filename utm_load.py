@@ -7,7 +7,26 @@ import sqlalchemy, models
 #Construction's ID in UKG tables
 ORGLEVEL1ID = 263
 OUTPUT_FILE_PATH = './DataFiles'
-def load_ukg(startDate: str|datetime, endDate: str|datetime):
+class MainEndpoint:
+    def __init__(self, tableName, params, idCol):
+        self.table_name = tableName
+        self.params = params
+        self.idCol = idCol
+def create_session() -> requests.Session:
+    with open("config.toml", "rb") as f:
+        endpoint = tomllib.load(f)
+    with open("secrets.toml","rb") as f:
+        endpoint.update(tomllib.load(f))
+
+    #establish UKG API
+    username = endpoint["UTM_Base"]["username"]
+    password = endpoint["UTM_Base"]["password"]
+    my_auth = requests.auth.HTTPBasicAuth(username, password)
+    s = requests.Session()
+    s.auth = my_auth
+    return s
+
+def load_ukg(startDate: str|datetime, endDate: str|datetime)->list[pd.DataFrame]:
     if isinstance(startDate, datetime):
         filterStartDate = get_date_string(startDate)
         filterEndDate = get_date_string(endDate)
@@ -16,16 +35,7 @@ def load_ukg(startDate: str|datetime, endDate: str|datetime):
         filterEndDate = endDate
     with open("config.toml", "rb") as f:
         endpoint = tomllib.load(f)
-    with open("secrets.toml","rb") as f:
-        endpoint.update(tomllib.load(f))
-
-    #establish UKG API
     host_url = endpoint["UTM_Base"]["base_url"]
-    username = endpoint["UTM_Base"]["username"]
-    password = endpoint["UTM_Base"]["password"]
-    my_auth = requests.auth.HTTPBasicAuth(username, password)
-    s = requests.Session()
-    s.auth = my_auth
     attributes = endpoint["attribute_endpoints"]
 
     #setup sqlite db file
@@ -33,43 +43,49 @@ def load_ukg(startDate: str|datetime, endDate: str|datetime):
     models.Base.metadata.drop_all(engine)
     models.Base.metadata.create_all(engine)
 
-    load_attributes(s,attributes=attributes,host_url=host_url,engine=engine)
+    result_dataframes = []
+    s = create_session()
+    attributes_dataframes_dict = load_attributes(
+            s,attributes=attributes,host_url=host_url,engine=engine
+            )
+    result_dataframes.extend(attributes_dataframes_dict.values())
+    main_endpoints = [
+        MainEndpoint("Employee", None, "EmpId"),
+        MainEndpoint("Time",
+                      f'$filter=WorkDate ge {filterStartDate} and WorkDate le {filterEndDate}&OrgLevel1Id eq {ORGLEVEL1ID}',
+                      "Id"
+        )
+    ]
+    for main_endpoint in main_endpoints:
+        print(f'trying {main_endpoint.table_name}...',end="")
+        try:
+            r = s.get(f'{host_url}/{main_endpoint.table_name}',params=main_endpoint.params)
+            r.raise_for_status()
+        except Exception as e:
+            print(e)
+        main_df = pd.DataFrame.from_records(r.json()["value"], index=main_endpoint.idCol)
+        main_df.to_sql(main_endpoint.table_name,engine,if_exists='replace')
 
-    print(f'trying Employee...',end="")
-    r = s.get(f'{host_url}/Employee')
-    r.raise_for_status()
-    employee_df = pd.DataFrame.from_records(r.json()["value"], index="EmpId")
-    employee_df.to_sql("Employee",engine,if_exists='replace')
-
-    #time must be filtered or else will timeout endpoint
-    payload = f'$filter=WorkDate ge {filterStartDate} and WorkDate le {filterEndDate}&OrgLevel1Id eq {ORGLEVEL1ID}'
-    try:
-        print(f'trying Time...')
-        r = s.get(f'{host_url}/Time',params=payload)
-        time_df = pd.DataFrame.from_records(r.json()["value"], index="Id")
-        time_df.to_sql("Time",engine,if_exists='replace')
-        print(f"record counts for Time:{len(time_df.index)}")
-    except:
-        print("ERR")
-    #join attributes to employees and time before sending to .csv for easy inspection
-    for ep, idColumn in attributes.items():
-        content = pd.read_csv(f'{OUTPUT_FILE_PATH}/{ep}.csv', index_col="Id")
-        employee_df = employee_df.merge(content, left_on= [idColumn]
-                                        , right_index=True
-                                        )
-        time_df = time_df.merge(content, left_on= [idColumn]
-                                        , right_index=True
-                                        )
-    employee_df.to_csv(f'{OUTPUT_FILE_PATH}/Employee.csv')
-    time_df.to_csv(f'{OUTPUT_FILE_PATH}/Time.csv')
+        #combine with attribute tables before sending to csv
+        main_df = combine_df(main_df,attributes_dataframes_dict)
+        main_df.to_csv(f'{OUTPUT_FILE_PATH}/{main_endpoint.table_name}.csv')
+        main_df.Name = main_endpoint.table_name
+        print(f"record count for {main_endpoint.table_name}: {len(main_df.index)}")
+        result_dataframes.append(main_df)
     s.close()
     engine.dispose()
+    return result_dataframes
+def combine_df(main_df: pd.DataFrame, attr_dataframes_dict: dict[str, pd.DataFrame])-> pd.DataFrame:
+    for idColumn, content_dataframe in attr_dataframes_dict.items():
+        main_df = main_df.merge(content_dataframe,left_on=[idColumn],right_index=True)
+    return main_df
 def get_date_string(d: datetime):
     format_string = '%Y-%m-%d'
     return d.strftime(format_string)
-def load_attributes(s: requests.Session, attributes: dict, host_url: str, engine: sqlalchemy.Engine):
+def load_attributes(s: requests.Session, attributes: dict, host_url: str, engine: sqlalchemy.Engine)-> dict[str, pd.DataFrame]:
     #idColumn is the column name in the employee table
-    for ep in attributes.keys():
+    result_dict = dict()
+    for ep, idColumn in attributes.items():
         try:
             print(f'trying {ep}...',end="")
             r = s.get(f'{host_url}/{ep}')
@@ -89,7 +105,10 @@ def load_attributes(s: requests.Session, attributes: dict, host_url: str, engine
                                 }
                                 ,errors='raise')
         content.to_csv(f'{OUTPUT_FILE_PATH}/{ep}.csv')
+        content.Name = ep
+        result_dict[idColumn] = content
         print(f"record counts for {ep}:{len(content.index)}")
+    return result_dict
 if __name__ == "__main__":
     startdate = datetime(2025,4,6)
     enddate = datetime(2025,4,12)
