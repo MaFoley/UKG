@@ -107,14 +107,15 @@ def employee_push():
                                 for tc in \
                                 s.get_cmic_api_results(f"{endpoint}{field_param}",limit=500)]
         #filtered_employees = [emp for emp in all_employees if emp.companyCode() =='PQCD4']
-        for emp in all_employees:
-            if emp.companyCode() == 'PQCD4':
-                cmic_employees.append(CMiC_Employee(emp))
-            if emp.job.name not in existing_trade_codes:
-                cmic_trade = CMiCTradeCode(emp)
-                payload = cmic_trade.__dict__.copy()
-                r = s.post(f"{endpoint}",json=payload)
-                print(r)
+        cmic_employees = [CMiC_Employee(emp) for emp in all_employees
+                           if emp.companyCode() == 'PQCD4']
+        trade_codes_to_post = [CMiCTradeCode(emp) for emp in all_employees
+                                if emp.job.name not in existing_trade_codes]
+
+        for trade_code in trade_codes_to_post:
+            payload = trade_code.__dict__.copy()
+            r = s.post(f"{endpoint}",json=payload)
+            # print(r)
     if not cmic_employees:
         print("❌ No matching employees found.")
         return
@@ -351,7 +352,7 @@ def load_cmic_projects():
 
 if __name__ == "__main__":
     # jobCodeCostCode()
-    post_timesheets_to_CMiC(testing=True)
+    # post_timesheets_to_CMiC(testing=True)
     employee_push()
 
 
