@@ -4,6 +4,8 @@ from datetime import datetime
 import pandas as pd
 import requests.auth
 import sqlalchemy, models
+from sqlalchemy import Select
+from sqlalchemy.orm import Session
 #Construction's ID in UKG tables
 ORGLEVEL1ID = 263
 OUTPUT_FILE_PATH = './DataFiles'
@@ -73,6 +75,7 @@ def load_ukg(startDate: str|datetime, endDate: str|datetime)->list[pd.DataFrame]
         print(f"record count for {main_endpoint.table_name}: {len(main_df.index)}")
         result_dataframes.append(main_df)
     s.close()
+    add_CMiC_Dept_Name("./Datafiles/DEPARTMENT MAP.csv")
     engine.dispose()
     return result_dataframes
 def combine_df(main_df: pd.DataFrame, attr_dataframes_dict: dict[str, pd.DataFrame])-> pd.DataFrame:
@@ -99,7 +102,7 @@ def load_attributes(s: requests.Session, attributes: dict, host_url: str, engine
         if r.status_code != requests.codes.ok:
             continue #ignore bad responses
         content = pd.DataFrame.from_records(r.json()["value"], index="Id")
-        content.to_sql(f"{ep}",engine,if_exists='replace', method='multi')
+        content.to_sql(f"{ep}",engine,if_exists='append', method='multi')
         content = content.rename(columns={"Name": f'{ep}_Name'
                                 ,"Description":f'{ep}_Description'
                                 }
@@ -109,6 +112,23 @@ def load_attributes(s: requests.Session, attributes: dict, host_url: str, engine
         result_dict[idColumn] = content
         print(f"record counts for {ep}:{len(content.index)}")
     return result_dict
+def add_CMiC_Dept_Name(filename: str):
+    engine =sqlalchemy.create_engine("sqlite:///DataFiles/utm.db", echo=False)
+    stmt = Select(models.Location)
+    with Session(engine) as session:
+        all_locations = session.execute(stmt).scalars().all()
+        dept_map_df = pd.read_csv(filename, header=0, usecols=[1, 3])
+        dept_map_df.columns = ['UKGDName', 'CMiCD']
+        dept_map = {
+            str(k).strip(): str(v).strip()
+            for k, v in zip(dept_map_df['UKGDName'], dept_map_df['CMiCD'])
+        }       
+
+        for location in all_locations:
+            location.CMiC_Department_ID = dept_map.get(location.name)
+        remapped_locations = [location for location in all_locations if location.CMiC_Department_ID]
+        print(remapped_locations)
+        session.commit()
 if __name__ == "__main__":
     startdate = datetime(2025,4,6)
     enddate = datetime(2025,4,12)

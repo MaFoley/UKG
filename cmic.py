@@ -20,7 +20,7 @@ class CMiCAPIClient:
         if auth:
             self.session.auth = auth
     @classmethod
-    def create_session(cls) -> tuple[str, requests.auth]:
+    def create_session(cls) -> tuple[str, requests.auth.HTTPBasicAuth]:
         with open("config.toml", "rb") as f:
             endpoint = tomllib.load(f)
         with open("secrets.toml","rb") as f:
@@ -52,8 +52,7 @@ class CMiCAPIClient:
         max_offset_limit = 50000  # safeguard
         while True:
             print(f"Requesting offset {offset}...")
-            params = {"offset": offset
-                    ,"limit": limit}
+            params = {"offset": offset, "limit": limit}
             response = self.session.get(f"{self.host_url}/{endpoint_url}", headers=headers, params=params)
 
             if response.status_code != 200:
@@ -90,14 +89,6 @@ class CMiCAPIClient:
             self.session.close()
             print("closed session")
 def employee_push():
-    #dept map
-    dept_map_df = pd.read_csv("DataFiles/DEPARTMENT MAP.csv", header=0, usecols=[1, 3])
-    dept_map_df.columns = ['UKGDName', 'CMiCD']
-    dept_map = {
-        str(k).strip(): str(v).strip()
-        for k, v in zip(dept_map_df['UKGDName'], dept_map_df['CMiCD'])
-    }
-
     engine = sqlalchemy.create_engine("sqlite:///DataFiles/utm.db", echo=False)
     results = []
     cmic_employees = []
@@ -361,7 +352,7 @@ def load_cmic_projects():
 
 if __name__ == "__main__":
     # jobCodeCostCode()
-    # post_timesheets_to_CMiC(testing=True)
+    post_timesheets_to_CMiC(testing=True)
     employee_push()
 
 

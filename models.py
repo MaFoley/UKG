@@ -80,8 +80,16 @@ class Location(Base):
     Id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String())
     description: Mapped[str] = mapped_column(String())
-    def __repr__(self) -> str:
-        return f"(Id={self.Id!r}, name={self.name!r}, description={self.description!r})"
+    CMiC_Department_ID: Mapped[str] = mapped_column(String(), nullable=True)
+    def __repr__(self):
+        repr_str = f"{self.__class__.__name__}"
+        repr_str += '('
+        
+        for key, val in self.__dict__.items():
+            val       = f"'{val}'" if isinstance(val, str) else val
+            repr_str += f"{key}={val}\n, "
+        
+        return repr_str.strip(", ") + ')'
 class Time(Base):
     __tablename__ = "Time"
     Id: Mapped[int] = mapped_column(primary_key=True)
@@ -282,9 +290,9 @@ class CMiC_Employee:
         self.EmpDateOfBirth = '1999-01-01' #plug
         self.EmpHireDate = '1999-01-02'#plug
         self.EmpCompCode = 'HJR'
-        self.EmpDeptCode = _mapped_dept
+        self.EmpDeptCode = emp.location.CMiC_Department_ID
         self.EmpPrnCode = emp.paygroup.get_cmic_payrun()
-        self.EmpPygCode = 'PMOH' if _mapped_dept== 'PMG' else 'CNOH'#I think this will work, does it even matter though
+        self.EmpPygCode = 'PMOH' if emp.location.CMiC_Department_ID== 'PMG' else 'CNOH'#I think this will work, does it even matter though
         self.EmpTrdCode = emp.job.name 
         self.EmpWrlCode = 'ATL'
         self.EmpChargeOutRate = 3 #need provided info
@@ -305,7 +313,7 @@ class CMiC_Employee:
         self.EmpYearWorkingDays = 260.0
         self.EmpYearWorkingHours = 2080.0
         self.EmpUeValidFlag = 'Y'
-        self.EmpHomeDeptCode = _mapped_dept  # Mapped
+        self.EmpHomeDeptCode =  emp.location.CMiC_Department_ID # Mapped
         self.EmpGlAccCode = '600.004'
         self.EmpPayrollClearAccCode = '240.001'
         self.EmpDrClearAccCode = '240.001'
