@@ -87,7 +87,6 @@ class CMiCAPIClient:
     def __del__(self):
         if self.session:
             self.session.close()
-            print("closed session")
 def employee_push():
     engine = sqlalchemy.create_engine("sqlite:///DataFiles/utm.db", echo=False)
     results = []
