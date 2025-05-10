@@ -212,7 +212,7 @@ class Timesheet_Entry:
         self.TshDate: str = parser.parse(time_entry.WorkDate).strftime('%Y-%m-%d')
         self.TshPprYear = parser.parse(time_entry.WorkDate).year
         self.TshPprPeriod = self._TshPprPeriod(parser.parse(time_entry.WorkDate))
-        self.TshDocumentNo = None
+        self.TshDocumentNo = time_entry.Id
         self.TshEmpNo = time_entry.employee.shortEmpId()
         self.TshTypeCode = 'J'
         self.TshUnionCode = None
