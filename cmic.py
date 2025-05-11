@@ -153,7 +153,7 @@ def employee_push():
             results.append({
                 "EmpNo": cmic_emp.EmpNo,
                 "Status": r.status_code,
-                "Response": r.text.strip('\n')
+                "Response":r.json()
             })
         except Exception as e:
             results.append({
