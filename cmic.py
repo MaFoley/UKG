@@ -3,7 +3,7 @@ import requests, json, csv, tomllib, os
 import pandas as pd
 from datetime import datetime
 from functools import wraps
-
+from collections.abc import Callable
 from sqlalchemy.orm import Session
 from models import CMiC_Employee, CMiCTradeCode, Time, Employee, Timesheet_Entry, JCJobCategory
 from sqlalchemy import select
@@ -87,6 +87,16 @@ class CMiCAPIClient:
     def __del__(self):
         if self.session:
             self.session.close()
+def create_multi_part_payload(path: str, operation: str, idfunc: Callable[[dict], str], payload_dicts: list[dict]) -> dict:
+    """Builds up multi part payload according to CMiC's documentation"""
+    result_dict = {"parts": list()}
+    for payload in payload_dicts:
+        part = {"path": path,
+                "operation": operation,
+                "payload": payload.__dict__,
+                "id": idfunc(payload)}
+        result_dict["parts"].append(part)
+    return result_dict
 def employee_push():
     engine = sqlalchemy.create_engine("sqlite:///DataFiles/utm.db", echo=False)
     results = []
@@ -143,7 +153,7 @@ def employee_push():
             results.append({
                 "EmpNo": cmic_emp.EmpNo,
                 "Status": r.status_code,
-                "Response": r.text.strip('\n')
+                "Response":r.json()
             })
         except Exception as e:
             results.append({
