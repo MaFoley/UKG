@@ -5,7 +5,7 @@ from datetime import datetime
 from functools import wraps
 from collections.abc import Callable
 from sqlalchemy.orm import Session
-from models import CMiC_Employee, CMiCTradeCode, Time, Employee, Timesheet_Entry, JCJobCategory
+from models import CMiC_Employee, CMiCTradeCode, Time, Employee, CMiC_Timesheet_Entry, JCJobCategory
 from sqlalchemy import select
 import sqlalchemy
 from pathlib import Path
@@ -171,7 +171,16 @@ def employee_push():
 
 
 
-def post_timesheets_to_CMiC(testing: bool=False) -> pd.DataFrame:
+def post_timesheets_to_CMiC(cmic_payrun: str, testing: bool=False) -> pd.DataFrame:
+    payrun_to_paygroup = {
+        'B' : 18,
+        'W' : 43
+    }
+    try:
+        ukg_paygroup_id = payrun_to_paygroup[cmic_payrun[0].upper()]
+    except IndexError as error:
+        print("invalid payrun. Must be B or W\n", error)
+
     #establish CMiC API
     s = CMiCAPIClient(*CMiCAPIClient.create_session())
     posted_entries = get_posted_keys() if testing == False else {}
@@ -180,7 +189,7 @@ def post_timesheets_to_CMiC(testing: bool=False) -> pd.DataFrame:
     results = []
     retry_time_entries = []
     with sqlalchemy.orm.Session(engine) as session:
-        emp_stmt = select(Employee).where(Employee.Active == 'A').where(Employee.PaygroupId == 18).where(Employee.OrgLevel3Id !=2)#.where(Employee.EmpId == "000223310-PQCD4")
+        emp_stmt = select(Employee).where(Employee.Active == 'A').where(Employee.PaygroupId == ukg_paygroup_id).where(Employee.OrgLevel3Id !=2)#.where(Employee.EmpId == "000223310-PQCD4")
         # emp_stmt = select(Employee).where(Employee.EmpId == "000020828-PQCD4")
         employees: list[Employee] = session.execute(emp_stmt).scalars()
         endpoint = r'hcm-rest-api/rest/1/pyemptimesheet'
@@ -194,7 +203,7 @@ def post_timesheets_to_CMiC(testing: bool=False) -> pd.DataFrame:
             # joined_stmt = select(Time).where(Time.EmpId == employee.EmpId)
             # timesheets = session.execute(joined_stmt)
             for t in employee.time_entries:
-                entry = Timesheet_Entry(t)
+                entry = CMiC_Timesheet_Entry(t)
                 if entry.TshJobdeptwoId == None:
                     results.append({
                         "EmpNo": entry.TshEmpNo,
@@ -316,7 +325,7 @@ def jobCodeCostCode():
         s = CMiCAPIClient(*CMiCAPIClient.create_session())
         for employee in employees:
             for entry in employee.time_entries:
-                cmic_entry = Timesheet_Entry(entry)
+                cmic_entry = CMiC_Timesheet_Entry(entry)
                 jccc = JCJobCategory(cmic_entry)
                 finder_str = f"?finder=selectJobCategory;jobCode={cmic_entry.TshJobdeptwoId}"
                 endpoint_url = f"jc-rest-api/rest/1/jcjobcategory{finder_str}"

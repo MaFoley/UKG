@@ -10,6 +10,9 @@ def get_posted_keys():
     cursor = conn.cursor()
 
     cursor.execute("""
+    DROP TABLE IF EXISTS post_log
+                   """)
+    cursor.execute("""
     CREATE TABLE IF NOT EXISTS post_log (
         Id INTEGER PRIMARY KEY AUTOINCREMENT,
         EmpNo TEXT NOT NULL,
@@ -50,4 +53,5 @@ def get_posted_keys():
     posted = {(row[0], row[1], row[2]) for row in cursor.fetchall()}
     conn.close()
     return posted
-
+if __name__ == "__main__":
+    get_posted_keys()

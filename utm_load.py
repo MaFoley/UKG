@@ -142,6 +142,6 @@ def add_CMiC_Dept_Name(filename: str):
         # print(remapped_locations)
         session.commit()
 if __name__ == "__main__":
-    startdate = datetime(2025,4,6)
-    enddate = datetime(2025,4,12)
+    startdate = datetime(2025,4,25)
+    enddate = datetime(2025,5,9)
     load_ukg(startdate, enddate)

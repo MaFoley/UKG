@@ -7,3 +7,4 @@ SQLAlchemy
 ipython
 ipykernel
 jupyter-console
+pytest

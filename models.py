@@ -201,7 +201,7 @@ class Employee(Base):
         return self.EmpId[3:9]
     def __repr__(self) -> str:
         return f"(Employee object Id={self.Id!r}, EmpId={self.EmpId!r}, Name: {self.FirstName} {self.LastName})"
-class Timesheet_Entry:
+class CMiC_Timesheet_Entry:
     """
     Meat and potatoes of the middleware.
     Constructor ingests a UKG Time object and generates the required format for posting to CMiC
@@ -256,12 +256,12 @@ class Timesheet_Entry:
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
             return False
-        return all(
+        return all([
             self.TshEmpNo == other.TshEmpNo
             ,self.TshDate == other.TshDate
             ,self.TshJobdeptwoId == other.TshJobdeptwoId
             ,self.TshPhsacctwiId == other.TshPhsacctwiId 
-        )      
+        ])      
     def __str__(self):
         return self.__repr__()
     def __repr__(self):
@@ -327,7 +327,7 @@ class CMiC_Employee:
             return False
         return self.EmpNo == other.EmpNo
 class JCJobCategory:
-    def __init__(self, timesheet_entry: Timesheet_Entry):
+    def __init__(self, timesheet_entry: CMiC_Timesheet_Entry):
         self.JcatCompCode = timesheet_entry.TshCompCode
         self.JcatJobCode = timesheet_entry.TshJobdeptwoId
         self.JcatPhsCode = timesheet_entry.TshPhsacctwiId

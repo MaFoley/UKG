@@ -1,6 +1,6 @@
 from sqlalchemy import select, create_engine
 from sqlalchemy.orm import Session
-from models import Employee, Timesheet_Entry
+from models import Employee, CMiC_Timesheet_Entry
 from cmic import CMiCAPIClient
 from collections.abc import Callable
 def create_multi_part_payload(path: str, operation: str, idfunc: Callable[[dict], str], payload_dicts: list[dict]) -> dict:
@@ -33,7 +33,7 @@ with Session(engine) as session:
                             s.get_cmic_api_results(f"{endpoint}{field_param}",limit=500)]
     
     for emp in all_employees:
-        timesheets = [Timesheet_Entry(t) for t in emp.time_entries]
+        timesheets = [CMiC_Timesheet_Entry(t) for t in emp.time_entries]
         r = create_multi_part_payload("path", "operation", lambda time_entry: time_entry.TshDocumentNo, timesheets)
         for d in r["parts"]:
             print(d)
