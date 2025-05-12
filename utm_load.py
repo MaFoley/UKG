@@ -66,7 +66,7 @@ def load_ukg(startDate: str|datetime, endDate: str|datetime)->list[pd.DataFrame]
         except Exception as e:
             print(e)
         main_df = pd.DataFrame.from_records(r.json()["value"], index=main_endpoint.idCol)
-        main_df.to_sql(main_endpoint.table_name,engine,if_exists='replace')
+        main_df.to_sql(main_endpoint.table_name,engine,if_exists='append')
 
         #combine with attribute tables before sending to csv
         main_df = combine_df(main_df,attributes_dataframes_dict)
@@ -74,14 +74,28 @@ def load_ukg(startDate: str|datetime, endDate: str|datetime)->list[pd.DataFrame]
         main_df.Name = main_endpoint.table_name
         print(f"record count for {main_endpoint.table_name}: {len(main_df.index)}")
         result_dataframes.append(main_df)
+    charge_rate_df = pd.read_csv("./DataFiles/Employee_Charge_Rates.csv",index_col="UKG Name")
+    add_charge_rates(Session(engine), charge_rate_df, "Charge Rate")
     s.close()
     add_CMiC_Dept_Name("./Datafiles/DEPARTMENT MAP.csv")
     engine.dispose()
     return result_dataframes
 def combine_df(main_df: pd.DataFrame, attr_dataframes_dict: dict[str, pd.DataFrame])-> pd.DataFrame:
+    """
+    for each idColumn, dataframe pair in the attr_dataframes_dict:
+          this will left merge into the main dataframe.
+          Using the idcolumn in main_df and index col of the attr_dict.
+    """
     for idColumn, content_dataframe in attr_dataframes_dict.items():
         main_df = main_df.merge(content_dataframe,left_on=[idColumn],right_index=True)
     return main_df
+def add_charge_rates(session: Session, charge_rates_df: pd.DataFrame, chargeRateColumn: str):
+    charge_rates_dict = charge_rates_df.to_dict()
+    stmt = Select(models.Employee)
+    all_employees: list[models.Employee] = session.execute(stmt).scalars().all()
+    for employee in all_employees:
+        employee.ChargeRate = charge_rates_dict[chargeRateColumn].get(employee.EmpId,0)
+    session.commit()
 def get_date_string(d: datetime):
     format_string = '%Y-%m-%d'
     return d.strftime(format_string)
@@ -99,8 +113,6 @@ def load_attributes(s: requests.Session, attributes: dict, host_url: str, engine
             print("ERR Connection issue")
         except:
             print("unspecified error")
-        if r.status_code != requests.codes.ok:
-            continue #ignore bad responses
         content = pd.DataFrame.from_records(r.json()["value"], index="Id")
         content.to_sql(f"{ep}",engine,if_exists='append', method='multi')
         content = content.rename(columns={"Name": f'{ep}_Name'
@@ -127,7 +139,7 @@ def add_CMiC_Dept_Name(filename: str):
         for location in all_locations:
             location.CMiC_Department_ID = dept_map.get(location.name)
         remapped_locations = [location for location in all_locations if location.CMiC_Department_ID]
-        print(remapped_locations)
+        # print(remapped_locations)
         session.commit()
 if __name__ == "__main__":
     startdate = datetime(2025,4,6)

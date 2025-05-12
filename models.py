@@ -98,17 +98,19 @@ class Time(Base):
     WorkDate: Mapped[str]
     PaycodeId: Mapped[int] 
     PaycodeExp: Mapped[str]
-    InOrg: Mapped[str]
-    OutOrg: Mapped[str]
-    In: Mapped[float] 
-    Out: Mapped[float] 
-    InExp: Mapped[float] 
-    OutExp: Mapped[float] 
+    InOrg: Mapped[str] = mapped_column(nullable = True)
+    OutOrg: Mapped[str]= mapped_column(nullable = True)
+    In: Mapped[str] = mapped_column(nullable = True)
+    Out: Mapped[str] = mapped_column(nullable = True)
+    InExp: Mapped[str] = mapped_column(nullable = True)
+    OutExp: Mapped[str] = mapped_column(nullable = True)
+    ShiftExp: Mapped[str]= mapped_column(nullable = True)
     RegHr: Mapped[float] 
     SchHrs: Mapped[float] 
     Overt1: Mapped[float] 
     Overt2: Mapped[float] 
     Overt3: Mapped[float] 
+    Overt4: Mapped[float] 
     Overt5: Mapped[float] 
     RegPay: Mapped[float] 
     Ot1Pay: Mapped[float] 
@@ -122,7 +124,7 @@ class Time(Base):
     WeekOt3: Mapped[float] 
     WeekOt4: Mapped[float] 
     WeekOt5: Mapped[float] 
-    ReasonId: Mapped[str] 
+    ReasonId: Mapped[str] = mapped_column(nullable=True)
     PaygroupId: Mapped[int] = mapped_column(ForeignKey("Paygroup.Id"))
     paygroup: Mapped["Paygroup"] = relationship()
     LocationId: Mapped[int] = mapped_column(ForeignKey("Location.Id"))
@@ -136,16 +138,16 @@ class Time(Base):
     orglevel3: Mapped["OrgLevel3"] = relationship()
     OrgLevel4Id: Mapped[int]
     PeriodTh: Mapped[float]
-    SiteIn: Mapped[float]
-    SiteOut: Mapped[float]
-    QuanGood: Mapped[float]
-    QuanScrap: Mapped[float]
-    BegSched: Mapped[float]
-    EndSched: Mapped[float]
-    Status: Mapped[float]
-    AdjustmentDate: Mapped[float]
-    InRounded: Mapped[str]
-    OutRounded: Mapped[str]
+    SiteIn: Mapped[str] =mapped_column(nullable = True)
+    SiteOut: Mapped[float]=mapped_column(nullable = True)
+    QuanGood: Mapped[float]=mapped_column(nullable = True)
+    QuanScrap: Mapped[float]=mapped_column(nullable = True)
+    BegSched: Mapped[float]=mapped_column(nullable = True)
+    EndSched: Mapped[float]=mapped_column(nullable = True)
+    Status: Mapped[int] =mapped_column(nullable = True)
+    AdjustmentDate: Mapped[str] = mapped_column(nullable=True)
+    InRounded: Mapped[str] = mapped_column(nullable = True)
+    OutRounded: Mapped[str]= mapped_column(nullable = True)
     def companyCode(self):
         #HJRC or HJRU become HJR
         return self.paygroup.name[:3]
@@ -163,8 +165,10 @@ class Employee(Base):
     LastName: Mapped[str]
     Active: Mapped[str]
     Email: Mapped[str]
-    BirthDate: Mapped[str]
+    BirthDate: Mapped[str]= mapped_column(nullable = True)
     HireDate: Mapped[str]
+    HoliRule: Mapped[str]
+    PayCate: Mapped[str]
     PayMethod: Mapped[int]
     PayType: Mapped[int]
     LocationId: Mapped[int] = mapped_column(ForeignKey("Location.Id"))
@@ -182,6 +186,7 @@ class Employee(Base):
     paygroup: Mapped["Paygroup"] = relationship()
     ShiftId: Mapped[int]
     AccessGroupId: Mapped[int]
+    ChargeRate: Mapped[float] = mapped_column(nullable=True)
     def companyCode(self):
         idParts = self.EmpId.split('-')
         if len(idParts) > 1:
@@ -212,7 +217,7 @@ class Timesheet_Entry:
         self.TshDate: str = parser.parse(time_entry.WorkDate).strftime('%Y-%m-%d')
         self.TshPprYear = parser.parse(time_entry.WorkDate).year
         self.TshPprPeriod = self._TshPprPeriod(parser.parse(time_entry.WorkDate))
-        self.TshDocumentNo = None
+        self.TshDocumentNo = "-".join([str(time_entry.Id), time_entry.EmpId])
         self.TshEmpNo = time_entry.employee.shortEmpId()
         self.TshTypeCode = 'J'
         self.TshUnionCode = None
@@ -270,16 +275,9 @@ class Timesheet_Entry:
         return repr_str.strip(", ") + ')'
 class CMiC_Employee:   
     def __init__(self, emp: Employee):
-        #TODO: add column to database and remove from init file
-        dept_map_df = pd.read_csv("DataFiles/DEPARTMENT MAP.csv", header=0, usecols=[1, 3])
-        dept_map_df.columns = ['UKGDName', 'CMiCD']
-        dept_map = {
-            str(k).strip(): str(v).strip()
-            for k, v in zip(dept_map_df['UKGDName'], dept_map_df['CMiCD'])
-        }       
         #default to new record action code
         self.EmhActionCode = "NR"
-        _mapped_dept = dept_map.get(emp.location.name, emp.location.name)  # Mapped
+        self.EmpCreateAccessCode = "N"
         self.EmpNo= emp.shortEmpId()
         self.EmpPrimaryEmpNo = emp.shortEmpId()
         self.EmpUser = 'NSMITH'
@@ -295,7 +293,7 @@ class CMiC_Employee:
         self.EmpPygCode = 'PMOH' if emp.location.CMiC_Department_ID== 'PMG' else 'CNOH'#I think this will work, does it even matter though
         self.EmpTrdCode = emp.job.name 
         self.EmpWrlCode = 'ATL'
-        self.EmpChargeOutRate = 3 #need provided info
+        self.EmpChargeOutRate = emp.ChargeRate if emp.ChargeRate != 0 else None#need provided info
         self.EmpBillingRate = 3 #need provided info
         self.EmpSecGrpEmpCode = 'MASTER'
         self.EmpFilingStatus = '01'
@@ -320,9 +318,9 @@ class CMiC_Employee:
         self.EmpLevAcruGlAccCode = '240.001'
         self.EmpLevClearAccCode = '240.001'
         self.EmpAnnualSalary = 100 #I think this is acceptable as a plug unless it has a meaningful impact on charge/bill rate
-        self.EmpPreferPayRate = 'J'
-        self.EmpPreferChargeRate = 'J'
-        self.EmpPreferBillRate = 'J'
+        self.EmpPreferPayRate = 'E'
+        self.EmpPreferChargeRate = 'E'
+        self.EmpPreferBillRate = 'E'
         self.EmpDirectDepMethod = 'N'            
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
