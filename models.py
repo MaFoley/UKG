@@ -274,10 +274,11 @@ class CMiC_Timesheet_Entry:
         
         return repr_str.strip(", ") + ')'
 class CMiC_Employee:   
-    def __init__(self, emp: Employee):
+    def __init__(self, emp: Employee, effective_date: str):
         #default to new record action code
         self.EmhActionCode = "NR"
         self.EmpCreateAccessCode = "N"
+        self.EmhEffectiveDate = effective_date #yyyy-mm-dd
         self.EmpNo= emp.shortEmpId()
         self.EmpPrimaryEmpNo = emp.shortEmpId()
         self.EmpUser = 'NSMITH'
@@ -293,6 +294,7 @@ class CMiC_Employee:
         self.EmpPygCode = 'PMOH' if emp.location.CMiC_Department_ID== 'PMG' else 'CNOH'#I think this will work, does it even matter though
         self.EmpTrdCode = emp.job.name 
         self.EmpWrlCode = 'ATL'
+        self.EmpHourlyRate = 1
         self.EmpChargeOutRate = emp.ChargeRate if emp.ChargeRate != 0 else None#need provided info
         self.EmpBillingRate = 3 #need provided info
         self.EmpSecGrpEmpCode = 'MASTER'

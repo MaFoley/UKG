@@ -87,7 +87,7 @@ class CMiCAPIClient:
     def __del__(self):
         if self.session:
             self.session.close()
-def create_multi_part_payload(path: str, operation: str, idfunc: Callable[[dict], str], payload_dicts: list[dict]) -> dict:
+def create_multi_part_payload(path: str, operation: str, idfunc: Callable[[dict], str], payload_dicts: list[object]) -> dict:
     """Builds up multi part payload according to CMiC's documentation"""
     result_dict = {"parts": list()}
     for payload in payload_dicts:
@@ -97,7 +97,7 @@ def create_multi_part_payload(path: str, operation: str, idfunc: Callable[[dict]
                 "id": idfunc(payload)}
         result_dict["parts"].append(part)
     return result_dict
-def employee_push():
+def employee_push(effective_date: str):
     engine = sqlalchemy.create_engine("sqlite:///DataFiles/utm.db", echo=False)
     results = []
     cmic_employees = []
@@ -117,7 +117,7 @@ def employee_push():
                                 for tc in \
                                 s.get_cmic_api_results(f"{endpoint}{field_param}",limit=500)]
         #filtered_employees = [emp for emp in all_employees if emp.companyCode() =='PQCD4']
-        cmic_employees = [CMiC_Employee(emp) for emp in all_employees
+        cmic_employees = [CMiC_Employee(emp, effective_date) for emp in all_employees
                            if emp.companyCode() == 'PQCD4']
         trade_codes_to_post = [CMiCTradeCode(emp) for emp in all_employees
                                 if emp.job.name not in existing_trade_codes]
@@ -372,6 +372,7 @@ def load_cmic_projects():
 if __name__ == "__main__":
     # jobCodeCostCode()
     # post_timesheets_to_CMiC(testing=True)
-    employee_push()
+    # employee_push()
+    load_cmic_projects()
 
 

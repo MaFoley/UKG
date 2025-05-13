@@ -1,6 +1,7 @@
 from sqlalchemy import select, create_engine
 from sqlalchemy.orm import Session
 from models import Employee, CMiC_Timesheet_Entry
+import json
 from cmic import CMiCAPIClient
 from collections.abc import Callable
 def create_multi_part_payload(path: str, operation: str, idfunc: Callable[[dict], str], payload_dicts: list[dict]) -> dict:
@@ -26,14 +27,12 @@ with Session(engine) as session:
     all_employees = session.execute(emp_stmt).scalars().all()
 
     # Step 2: Filter those ending in '-PQCD4'
-    endpoint = "hcm-rest-api/rest/1/pytrades"
-    field_param = "?fields=TrdCode"
-    existing_trade_codes = [ tc["TrdCode"]
-                            for tc in \
-                            s.get_cmic_api_results(f"{endpoint}{field_param}",limit=500)]
+    endpoint = r"hcm-rest-api/rest/1/pyemptimesheet"
+    path = ""
     
     for emp in all_employees:
-        timesheets = [CMiC_Timesheet_Entry(t) for t in emp.time_entries]
-        r = create_multi_part_payload("path", "operation", lambda time_entry: time_entry.TshDocumentNo, timesheets)
-        for d in r["parts"]:
-            print(d)
+        timesheets = [CMiC_Timesheet_Entry(time_entry) for time_entry in emp.time_entries]
+        payload = create_multi_part_payload(path, "create", lambda time_entry: time_entry.TshDocumentNo, timesheets)
+        # r = s.post(endpoint_url=endpoint,json=payload) 
+        # print(r)
+        print(json.dumps(payload))
