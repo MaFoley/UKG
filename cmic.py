@@ -107,7 +107,7 @@ def employee_push(effective_date: str):
     #TODO: cmic get request of paginated employee ids
     with Session(engine) as session:
         # Step 1: Get all employee IDs
-        emp_stmt = select(Employee).where(Employee.Active == 'A').where(Employee.PaygroupId == 18).where(Employee.OrgLevel3Id !=2)#.where(Employee.EmpId == "000223310-PQCD4")
+        emp_stmt = select(Employee).where(Employee.EmpId.in_(emp_ids_in_csv))#.where(Employee.EmpId == "000223310-PQCD4")
         all_employees = session.execute(emp_stmt).scalars().all()
 
         # Step 2: Filter those ending in '-PQCD4'
@@ -169,6 +169,8 @@ def employee_push(effective_date: str):
         writer.writeheader()
         writer.writerows(results)
 
+df_time = pd.read_csv("DataFiles/time.csv")
+emp_ids_in_csv = set(df_time["EmpId"].dropna().astype(str).str.strip())
 
 
 def post_timesheets_to_CMiC(cmic_payrun: str, testing: bool=False) -> pd.DataFrame:
@@ -189,7 +191,8 @@ def post_timesheets_to_CMiC(cmic_payrun: str, testing: bool=False) -> pd.DataFra
     results = []
     retry_time_entries = []
     with sqlalchemy.orm.Session(engine) as session:
-        emp_stmt = select(Employee).where(Employee.Active == 'A').where(Employee.PaygroupId == ukg_paygroup_id).where(Employee.OrgLevel3Id !=2)#.where(Employee.EmpId == "000223310-PQCD4")
+        
+        emp_stmt = select(Employee).where(Employee.EmpId.in_(emp_ids_in_csv))#.where(Employee.EmpId == "000223310-PQCD4")
         # emp_stmt = select(Employee).where(Employee.EmpId == "000020828-PQCD4")
         employees: list[Employee] = session.execute(emp_stmt).scalars()
         endpoint = r'hcm-rest-api/rest/1/pyemptimesheet'
@@ -320,7 +323,7 @@ def jobCodeCostCode():
     results = []
 
     with sqlalchemy.orm.Session(engine) as session:
-        emp_stmt = select(Employee).where(Employee.Active == 'A')#.where(Employee.EmpId == "000223310-PQCD4")
+        emp_stmt = select(Employee).where(Employee.EmpId.in_(emp_ids_in_csv))#.where(Employee.EmpId == "000223310-PQCD4")
         employees: list[Employee] = session.execute(emp_stmt).scalars()
         s = CMiCAPIClient(*CMiCAPIClient.create_session())
         for employee in employees:
