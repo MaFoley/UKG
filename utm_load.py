@@ -28,7 +28,7 @@ def create_session() -> requests.Session:
     s.auth = my_auth
     return s
 
-def load_ukg(startDate: str|datetime, endDate: str|datetime)->list[pd.DataFrame]:
+def load_ukg(startDate: str|datetime, endDate: str|datetime, PaygroupId: int)->list[pd.DataFrame]:
     if isinstance(startDate, datetime):
         filterStartDate = get_date_string(startDate)
         filterEndDate = get_date_string(endDate)
@@ -54,7 +54,7 @@ def load_ukg(startDate: str|datetime, endDate: str|datetime)->list[pd.DataFrame]
     main_endpoints = [
         MainEndpoint("Employee", None, "EmpId"),
         MainEndpoint("Time",
-                      f'$filter=WorkDate ge {filterStartDate} and WorkDate le {filterEndDate}&OrgLevel1Id eq {ORGLEVEL1ID}',
+                      f'$filter=WorkDate ge {filterStartDate} and WorkDate le {filterEndDate} and PaygroupId eq {PaygroupId}',
                       "Id"
         )
     ]
@@ -143,5 +143,6 @@ def add_CMiC_Dept_Name(filename: str):
         session.commit()
 if __name__ == "__main__":
     startdate = datetime(2025,4,21)
-    enddate = datetime(2025,5,2)
-    load_ukg(startdate, enddate)
+    enddate = datetime(2025,5,3)
+    PAYGROUPID = 18 #HJRC
+    load_ukg(startdate, enddate, PAYGROUPID)

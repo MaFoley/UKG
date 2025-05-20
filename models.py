@@ -219,7 +219,6 @@ class CMiC_Timesheet_Entry:
         self.TshPprPeriod = self._TshPprPeriod(parser.parse(time_entry.WorkDate))
         self.TshDocumentNo = "-".join([str(time_entry.Id), time_entry.EmpId])
         self.TshEmpNo = time_entry.employee.shortEmpId()
-        self.TshTypeCode = 'J'
         self.TshUnionCode = None
         if time_entry.job != None:
             self.TshTradeCode = time_entry.job.name #time->emp->jobid->job.name
@@ -228,8 +227,13 @@ class CMiC_Timesheet_Entry:
             self.TshTradeCode = None
             self.TshPhsacctwiId = None
 
-        if time_entry.project.cmic_project != None:
+        if time_entry.project.cmic_project != None and time_entry.project[-4:] != "0000":
+            self.TshTypeCode = 'J'
             self.TshJobdeptwoId = time_entry.project.cmic_project.JobCode #time->projectid->project.name
+        elif time_entry.project.cmic_project != None and time_entry.project[-4:] == "0000":
+            self.TshTypeCode = 'G'
+            self.TshJobdeptwoId = time_entry.project.cmic_project.JobCode #time->projectid->project.name
+            #self.TshPhsacctwiId = '600.004'
         else:
             self.TshJobdeptwoId = None
         self.TshNormalHours: float = time_entry.RegHr

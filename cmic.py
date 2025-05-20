@@ -51,7 +51,7 @@ class CMiCAPIClient:
         offset = 0
         max_offset_limit = 50000  # safeguard
         while True:
-            print(f"Requesting offset {offset}...")
+            print(f"Requesting offset {offset}...", end="")
             params = {"offset": offset, "limit": limit}
             response = self.session.get(f"{self.host_url}/{endpoint_url}", headers=headers, params=params)
 
@@ -169,7 +169,7 @@ def employee_push(effective_date: str):
         writer.writeheader()
         writer.writerows(results)
 
-df_time = pd.read_csv("DataFiles/time.csv")
+df_time = pd.read_csv("DataFiles/Time.csv")
 emp_ids_in_csv = set(df_time["EmpId"].dropna().astype(str).str.strip())
 
 
