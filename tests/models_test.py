@@ -1,5 +1,6 @@
 import pytest
 from models import Employee, CMiC_Employee, Time, CMiC_Timesheet_Entry
+import models
 import sqlalchemy
 from sqlalchemy.orm import Session
 from datetime import datetime
@@ -22,8 +23,8 @@ def test_Employee(get_sqla_session, emp_stmt):
 def test_CMiC_Employee(get_sqla_session, emp_stmt):
     ukg_employees = get_sqla_session.execute(emp_stmt).scalars()
     for ukg_employee in ukg_employees:
-        cmic_employee = CMiC_Employee(ukg_employee)
-        cmic_employee1 = CMiC_Employee(ukg_employee)
+        cmic_employee = CMiC_Employee(ukg_employee, "2025-05-22")
+        cmic_employee1 = CMiC_Employee(ukg_employee, "2025-05-22")
         assert cmic_employee.EmpNo == ukg_employee.shortEmpId()
         assert cmic_employee1 is not cmic_employee
         assert cmic_employee == cmic_employee1
@@ -49,3 +50,8 @@ def test_CMiC_Timesheet_Entry(get_sqla_session, time_stmt):
     copy_cmic_timesheet_entry = CMiC_Timesheet_Entry(time)
     assert cmic_timesheet_entry is not copy_cmic_timesheet_entry
     assert cmic_timesheet_entry == copy_cmic_timesheet_entry
+
+def test_UKG_Project():
+    p = models.Project()
+    p.Id,p.name,p.description = 1, "CN0000", "test description"
+    assert p.isOverheadProject()

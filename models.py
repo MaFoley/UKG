@@ -73,6 +73,8 @@ class Project(Base):
     description: Mapped[str] = mapped_column(String())
     #cmic_name: Mapped[str] = mapped_column(String())
     cmic_project: Mapped["CMiC_Project"] = relationship()
+    def isOverheadProject(self) -> bool:
+        return self.name[-4:] == "0000"
     def __repr__(self) -> str:
         return f"(Id={self.Id!r}, name={self.name!r}, description={self.description!r})"
 class Location(Base):
@@ -227,10 +229,10 @@ class CMiC_Timesheet_Entry:
             self.TshTradeCode = None
             self.TshPhsacctwiId = None
 
-        if time_entry.project.cmic_project != None and time_entry.project[-4:] != "0000":
+        if time_entry.project.cmic_project != None and time_entry.project.name[-4:] != "0000":
             self.TshTypeCode = 'J'
             self.TshJobdeptwoId = time_entry.project.cmic_project.JobCode #time->projectid->project.name
-        elif time_entry.project.cmic_project != None and time_entry.project[-4:] == "0000":
+        elif time_entry.project.cmic_project != None and time_entry.project.name[-4:] == "0000":
             self.TshTypeCode = 'G'
             self.TshJobdeptwoId = time_entry.project.cmic_project.JobCode #time->projectid->project.name
             #self.TshPhsacctwiId = '600.004'
