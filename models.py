@@ -231,7 +231,7 @@ class CMiC_Timesheet_Entry:
             
         project_name = time_entry.project.name if time_entry.project else ""
 
-        if project_name[-4:] == "0000" or "Proj" in project_name or "Z" in project_name:
+        if project_name[-4:] == "0000" or "PROJ" in project_name or "Z" in project_name:
             self.TshTypeCode = 'G'
             self.TshJobdeptwoId = time_entry.employee.location.CMiC_Department_ID
             self.TshPhsacctwiId = '600.004'
@@ -240,7 +240,7 @@ class CMiC_Timesheet_Entry:
             self.TshJobdeptwoId = time_entry.project.cmic_project.JobCode
         else:
             self.TshJobdeptwoId = None
-            
+
         self.TshNormalHours: float = time_entry.RegHr
         self.TshCompCode = time_entry.companyCode()
         self.TshWorkCompCode = self.TshCompCode
