@@ -24,4 +24,5 @@ Time = ""
 #    "ScheduleRequest"
 #    "Timesheet"
 [CMiC_Base]
-host_url = 'https://nova-api-test.cmiccloud.com/cmictest'
+host_url = 'https://nova-api.cmiccloud.com/cmicprod'
+#host_url = 'https://nova-api-test.cmiccloud.com/cmictest'

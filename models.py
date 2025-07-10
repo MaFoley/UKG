@@ -260,8 +260,10 @@ class CMiC_Timesheet_Entry:
     def _TshPprPeriod(self, date: datetime) -> int:
         #if tshdate > prior period start date and <= period end date, then return pay period
         periodEndDate = datetime(2024,12,29)
+        #B for biweekly, else Weekly
+        periodLength = 14 if self.TshPrnCode == 'B' else 7
         delta = date - periodEndDate
-        return delta.days // 14 + 1
+        return delta.days // periodLength + 1
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
             return False
