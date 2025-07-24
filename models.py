@@ -219,7 +219,6 @@ class CMiC_Timesheet_Entry:
         self.TshDate: str = parser.parse(time_entry.WorkDate).strftime('%Y-%m-%d')
         self.TshPprYear = parser.parse(time_entry.WorkDate).year
         self.TshPprPeriod = self._TshPprPeriod(parser.parse(time_entry.WorkDate))
-        self.TshDocumentNo = "-".join([str(time_entry.Id), time_entry.EmpId])
         self.TshEmpNo = time_entry.employee.shortEmpId()
         self.TshUnionCode = None
         if time_entry.job != None:
@@ -249,6 +248,7 @@ class CMiC_Timesheet_Entry:
         self.TshDotHours:float = time_entry.Overt2
         self.TshWcbCode = None #TODO: attach workers comp code
         self.TshOhType = None
+        self.TshDocumentNo = "-".join([self.TshEmpNo, self.TshPrnCode + str(self.TshPprYear) + str(self.TshPprPeriod)])
 
     def _findPayRun(self, paygroup: str) -> str:
         if paygroup.upper().strip() == self.BIWEEKLYPAYGROUP:
