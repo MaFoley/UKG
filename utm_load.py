@@ -54,7 +54,8 @@ def load_ukg(startDate: str|datetime, endDate: str|datetime, PaygroupId: int)->l
     main_endpoints = [
         MainEndpoint("Employee", None, "EmpId"),
         MainEndpoint("Time",
-                      f'$filter=WorkDate ge {filterStartDate} and WorkDate le {filterEndDate} and PaygroupId eq {PaygroupId}',
+                        f'$filter=WorkDate ge {filterStartDate} and WorkDate le {filterEndDate} and PaygroupId eq {PaygroupId}'
+                        f'and (OrgLevel1Id eq 263 or OrgLevel1Id eq 261)',
                       "Id"
         )
     ]
@@ -142,7 +143,7 @@ def add_CMiC_Dept_Name(filename: str):
         # print(remapped_locations)
         session.commit()
 if __name__ == "__main__":
-    startdate = datetime(2025,4,21)
-    enddate = datetime(2025,5,3)
+    startdate = datetime(2025,9,1)
+    enddate = datetime(2025,9,7)
     PAYGROUPID = 18 #HJRC
     load_ukg(startdate, enddate, PAYGROUPID)
