@@ -10,7 +10,10 @@ from datetime import datetime, timedelta
 from dateutil import parser, tz
 from sqlalchemy.orm import relationship
 import pandas as pd
+import tomllib
 
+with open("secrets.toml", "rb") as f:
+    config = tomllib.load(f)
 
 
 class Base(DeclarativeBase):
@@ -215,7 +218,6 @@ class CMiC_Timesheet_Entry:
         TshDate expected in yyyy-mm-dd format
         """
         self.TshPrnCode = self._findPayRun(time_entry.paygroup.name)
-        self.TshPrnCode = self._findPayRun(time_entry.paygroup.name)
         self.TshDate: str = parser.parse(time_entry.WorkDate).strftime('%Y-%m-%d')
         self.TshPprYear = parser.parse(time_entry.WorkDate).year
         self.TshPprPeriod = self._TshPprPeriod(parser.parse(time_entry.WorkDate))
@@ -306,7 +308,11 @@ class CMiC_Employee:
         self.EmpTrdCode = emp.job.name 
         self.EmpWrlCode = 'ATL'
         self.EmpHourlyRate = 1
-        self.EmpChargeOutRate = emp.ChargeRate if emp.ChargeRate != 0 else None#need provided info
+        self.EmpChargeOutRate = (
+            config["Union Charge Rate"]["rate"]
+            if self.EmpPrnCode == 'W'
+            else emp.ChargeRate if emp.ChargeRate != 0 else None#need provided info
+        )
         self.EmpBillingRate = 3 #need provided info
         self.EmpSecGrpEmpCode = 'MASTER'
         self.EmpFilingStatus = '01'
