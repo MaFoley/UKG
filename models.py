@@ -309,7 +309,7 @@ class CMiC_Employee:
         self.EmpWrlCode = 'ATL'
         self.EmpHourlyRate = 1
         self.EmpChargeOutRate = (
-            config["Union Charge Rate"]["rate"]
+            config["Union_Charge_Rate"]["rate"]
             if self.EmpPrnCode == 'W'
             else emp.ChargeRate if emp.ChargeRate != 0 else None#need provided info
         )

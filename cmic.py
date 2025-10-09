@@ -134,12 +134,21 @@ def employee_push(effective_date: str):
     print(f"📦 Found {len(cmic_employees)} matching employees. Starting POSTs...\n")
 
     endpoint = "hcm-rest-api/rest/1/pyemployee"
-    existing_employees = [emp["EmpNo"]
+    fields = "?fields=EmpChargeOutRate,EmpNo"
+    existing_employees = [emp
                             for emp in \
-                            s.get_cmic_api_results(f"{endpoint}", limit=500)]
-
+                            s.get_cmic_api_results(f"{endpoint+fields}", limit=500)]
+    emp_df = pd.DataFrame(existing_employees)
+    #set precision to allow comparison
+    emp_df["EmpChargeOutRate"] = emp_df["EmpChargeOutRate"].round(2)
     for cmic_emp in cmic_employees:
-        if cmic_emp.EmpNo in existing_employees:
+        #early exit: if empNo exists and charge rate is the same, can skip
+        is_present = emp_df['EmpNo'].isin([cmic_emp.EmpNo]).any()
+        rate_to_compare = round(cmic_emp.EmpChargeOutRate,2) if cmic_emp.EmpChargeOutRate is not None else 0
+        if is_present and rate_to_compare == emp_df["EmpChargeOutRate"].loc[emp_df["EmpNo"] == cmic_emp.EmpNo].item():
+            continue
+
+        if is_present:
             cmic_emp.EmhActionCode = "CH"
         else:
             cmic_emp.EmhActionCode = "NR"
@@ -153,19 +162,21 @@ def employee_push(effective_date: str):
             results.append({
                 "EmpNo": cmic_emp.EmpNo,
                 "Status": r.status_code,
-                "Response":r.json()
+                "Response":r.json(),
+                "Payload":payload
             })
         except Exception as e:
             results.append({
                 "EmpNo": cmic_emp.EmpNo,
                 "Status": "ERROR",
-                "Response": str(e)
+                "Response": str(e),
+                "Payload":payload
             })
 
     # After loop:
     with open("DataFiles/employee_post_results.csv", "w", newline="") as f:
         print(f"writing {len(results)} records to file")
-        writer = csv.DictWriter(f, fieldnames=["EmpNo", "Status", "Response"])
+        writer = csv.DictWriter(f, fieldnames=["EmpNo", "Status", "Response", "Payload"])
         writer.writeheader()
         writer.writerows(results)
 
@@ -375,7 +386,7 @@ def load_cmic_projects():
 if __name__ == "__main__":
     # jobCodeCostCode()
     # post_timesheets_to_CMiC(testing=True)
-    # employee_push()
-    load_cmic_projects()
+    employee_push("2025-09-21")
+    #load_cmic_projects()
 
 
