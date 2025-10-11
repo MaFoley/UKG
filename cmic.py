@@ -10,11 +10,24 @@ from sqlalchemy import select
 import sqlalchemy
 from pathlib import Path
 from posting_log_ingest import get_posted_keys
-
+import logging, sys
+OUTPUT_FILE_PATH = './DataFiles'
+logger = logging.getLogger('cmic')
+logger.level = logging.INFO
+formatter = logging.Formatter("%(asctime)s | %(levelname)s | %(name)s | %(message)s")
+sh, fh = logging.StreamHandler(sys.stdout),logging.FileHandler(f"{OUTPUT_FILE_PATH}/middleware.log")
+sh.setFormatter(formatter)
+sh.setLevel(logger.level)
+fh.setFormatter(formatter)
+sh.setLevel(logger.level)
+logger.addHandler(sh)
+logger.addHandler(fh)
 
 UKGHJRCOMPANYCODE = 'PQCD4'
 class CMiCAPIClient:
     def __init__(self, host_url, auth=None):
+        self.logger = logging.getLogger('cmic.CMiCAPIClient')
+        self.logger.info('creating instance of CMiCAPIClient')
         self.host_url = host_url
         self.session = requests.Session()
         if auth:
@@ -50,36 +63,37 @@ class CMiCAPIClient:
         # === PAGINATION LOOP ===
         offset = 0
         max_offset_limit = 50000  # safeguard
+        logger.info(f"requestion records from {endpoint_url} with {limit=}")
         while True:
-            print(f"Requesting offset {offset}...", end="")
+            logger.info(f"Requesting {offset=}...")
             params = {"offset": offset, "limit": limit}
             response = self.session.get(f"{self.host_url}/{endpoint_url}", headers=headers, params=params)
 
             if response.status_code != 200:
-                print(f"Error {response.status_code}")
-                print(response.text)
+                logger.info(f"Error {response.status_code}")
+                logger.info(response.text)
                 break
 
             try:
                 data = response.json()
             except json.JSONDecodeError:
-                print("JSON decode fail")
-                print(response.text)
+                logger.error("JSON decode fail")
+                logger.error(response.text)
                 break
 
             items = data.get("items", data.get("value", []))
             has_more = data.get("hasMore", False)
             for item in items:
                 yield item
-            print(f"Retrieved {len(items)} records — hasMore: {has_more}")
+            logger.info(f"Retrieved {len(items)} records — {has_more=}")
 
             offset += len(items)
             if not has_more:
-                print(f"No more pages. Loaded {offset} items")
+                logger.info(f"No more pages. Loaded {offset} items")
                 break
 
             if offset > max_offset_limit:
-                print("Max offset reached.")
+                logger.info("Max offset reached.")
                 break
     @wraps(requests.Session.post)
     def post(self, endpoint_url: str, **kwargs):
@@ -125,13 +139,13 @@ def employee_push(effective_date: str):
         for trade_code in trade_codes_to_post:
             payload = trade_code.__dict__.copy()
             r = s.post(f"{endpoint}",json=payload)
-            # print(r)
+            # logger.info(r)
     if not cmic_employees:
-        print("❌ No matching employees found.")
+        logger.info("No matching employees found.")
         return
 
     # Step 3: Loop and post each
-    print(f"📦 Found {len(cmic_employees)} matching employees. Starting POSTs...\n")
+    logger.info(f"Found {len(cmic_employees)} matching employees. Starting POSTs...\n")
 
     endpoint = "hcm-rest-api/rest/1/pyemployee"
     fields = "?fields=EmpChargeOutRate,EmpNo"
@@ -154,7 +168,7 @@ def employee_push(effective_date: str):
             cmic_emp.EmhActionCode = "NR"
         payload = cmic_emp.__dict__.copy()
         if not payload:
-            print(f"⚠️ Skipping {cmic_emp} – no data returned.")
+            logger.info(f"️Skipping {cmic_emp} no data returned.")
             continue
 
         try:
@@ -175,7 +189,7 @@ def employee_push(effective_date: str):
 
     # After loop:
     with open("DataFiles/employee_post_results.csv", "w", newline="") as f:
-        print(f"writing {len(results)} records to file")
+        logger.info(f"writing {len(results)} records to file")
         writer = csv.DictWriter(f, fieldnames=["EmpNo", "Status", "Response", "Payload"])
         writer.writeheader()
         writer.writerows(results)
@@ -192,7 +206,7 @@ def post_timesheets_to_CMiC(cmic_payrun: str, testing: bool=False) -> pd.DataFra
     try:
         ukg_paygroup_id = payrun_to_paygroup[cmic_payrun[0].upper()]
     except IndexError as error:
-        print("invalid payrun. Must be B or W\n", error)
+        logger.error("invalid payrun. Must be B or W\n", error)
 
     #establish CMiC API
     s = CMiCAPIClient(*CMiCAPIClient.create_session())
@@ -209,10 +223,10 @@ def post_timesheets_to_CMiC(cmic_payrun: str, testing: bool=False) -> pd.DataFra
         endpoint = r'hcm-rest-api/rest/1/pyemptimesheet'
         for employee in employees:
             if not employee.time_entries:
-                print(f"Employee {employee.EmpId} {employee.LastName}, {employee.FirstName} has no time in current pay period")
+                logger.info(f"Employee {employee.EmpId} {employee.LastName}, {employee.FirstName} has no time in current pay period")
                 continue
             elif employee.companyCode() != UKGHJRCOMPANYCODE:
-                print(f"Employee {employee.EmpId} not in HJR")
+                logger.info(f"Employee {employee.EmpId} not in HJR")
                 continue
             # joined_stmt = select(Time).where(Time.EmpId == employee.EmpId)
             # timesheets = session.execute(joined_stmt)
@@ -233,7 +247,7 @@ def post_timesheets_to_CMiC(cmic_payrun: str, testing: bool=False) -> pd.DataFra
                 entry_key = (entry.TshEmpNo.strip(), entry.TshDate.strip(), entry.TshPrnCode.strip())
 
                 if entry_key in posted_entries:
-                    # print(f"Already Posted, {entry_key} - skipping")
+                    # logger.info(f"Already Posted, {entry_key} - skipping")
                     results.append({
                         "EmpNo": entry.TshEmpNo,
                         "WorkDate": entry.TshDate,
@@ -248,7 +262,7 @@ def post_timesheets_to_CMiC(cmic_payrun: str, testing: bool=False) -> pd.DataFra
 
                 try:
                     # jobcodecostcode = JCJobCategory(entry)
-                    # print(jobcodecostcode)
+                    # logger.info(jobcodecostcode)
                     r = s.post(f"{endpoint}", json=payload)
                     status = r.status_code
                     resp = r.text
@@ -257,7 +271,7 @@ def post_timesheets_to_CMiC(cmic_payrun: str, testing: bool=False) -> pd.DataFra
                     resp = str(e)
                 if status == 400 and "Cost Code Code".lower() in resp.lower():
                     retry_time_entries.append(entry)
-                # print(json.dumps(payload,indent=None))
+                # logger.info(json.dumps(payload,indent=None))
 
                 results.append({
                     "EmpNo": entry.TshEmpNo,
@@ -274,7 +288,7 @@ def post_timesheets_to_CMiC(cmic_payrun: str, testing: bool=False) -> pd.DataFra
             entry_key = (retry_entry.TshEmpNo.strip(), retry_entry.TshDate.strip(), retry_entry.TshPrnCode.strip())
 
             if entry_key in posted_entries:
-                # print(f"Already Posted, {entry_key} - skipping")
+                # logger.info(f"Already Posted, {entry_key} - skipping")
                 results.append({
                     "EmpNo": retry_entry.TshEmpNo,
                     "WorkDate": retry_entry.TshDate,
@@ -289,7 +303,7 @@ def post_timesheets_to_CMiC(cmic_payrun: str, testing: bool=False) -> pd.DataFra
 
             try:
                 # jobcodecostcode = JCJobCategory(entry)
-                # print(jobcodecostcode)
+                # logger.info(jobcodecostcode)
                 r = s.post(f"{endpoint}", json=payload)
                 status = r.status_code
                 resp = r.text
@@ -298,7 +312,7 @@ def post_timesheets_to_CMiC(cmic_payrun: str, testing: bool=False) -> pd.DataFra
                 resp = str(e)
             # if status == 400 and "Cost Code Code".lower() in resp.lower():
             #     retry_time_entries.append(entry)
-            # print(json.dumps(payload,indent=None))
+            # logger.info(json.dumps(payload,indent=None))
 
             results.append({
                 "EmpNo": retry_entry.TshEmpNo,
@@ -322,7 +336,7 @@ def post_timesheets_to_CMiC(cmic_payrun: str, testing: bool=False) -> pd.DataFra
             writer.writerow(row)
             
 
-    print(f"Post log written to {output_file}")
+    logger.info(f"Post log written to {output_file}")
     df_results = pd.read_csv(output_file)
     return df_results
 
@@ -347,10 +361,10 @@ def jobCodeCostCode():
                                 for jccc in s.get_cmic_api_results(endpoint_url=endpoint_url)
                 ]
                 if (jccc.JcatJobCode, jccc.JcatPhsCode,jccc.JcatCode) not in valid_combos:
-                    print(f"invalid combo   {jccc!r}")
+                    logger.info(f"invalid combo   {jccc!r}")
                 else:
-                    print("combo found")
-        print(valid_combos)
+                    logger.info("combo found")
+        logger.info(valid_combos)
 def load_cmic_projects():
 
     s = CMiCAPIClient(*CMiCAPIClient.create_session())
@@ -380,7 +394,7 @@ def load_cmic_projects():
     engine =sqlalchemy.create_engine("sqlite:///DataFiles/utm.db", echo=False)
     df.to_csv(csv_path, index=True)
     df.to_sql("CMiC_Project",engine,if_exists='replace')
-    print(f"Saved filtered project data to {csv_path}")
+    logger.info(f"Saved filtered project data to {csv_path}")
 
 
 if __name__ == "__main__":

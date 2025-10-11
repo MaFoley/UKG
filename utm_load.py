@@ -6,9 +6,21 @@ import requests.auth
 import sqlalchemy, models
 from sqlalchemy import Select
 from sqlalchemy.orm import Session
+import logging, sys
 #Construction's ID in UKG tables
 ORGLEVEL1ID = 263
 OUTPUT_FILE_PATH = './DataFiles'
+logger = logging.getLogger('utm_load')
+logger.level = logging.INFO
+formatter = logging.Formatter("%(asctime)s | %(levelname)s | %(name)s | %(message)s")
+sh, fh = logging.StreamHandler(sys.stdout),logging.FileHandler(f"{OUTPUT_FILE_PATH}/middleware.log")
+sh.setFormatter(formatter)
+sh.setLevel(logger.level)
+fh.setFormatter(formatter)
+sh.setLevel(logger.level)
+logger.addHandler(sh)
+logger.addHandler(fh)
+
 class MainEndpoint:
     def __init__(self, tableName, params, idCol):
         self.table_name = tableName
@@ -60,12 +72,13 @@ def load_ukg(startDate: str|datetime, endDate: str|datetime, PaygroupId: int)->l
         )
     ]
     for main_endpoint in main_endpoints:
-        print(f'trying {main_endpoint.table_name}...',end="")
+        logger.info(f'trying {main_endpoint.table_name}...')
+        logger.info(f'{main_endpoint.params=}')
         try:
             r = s.get(f'{host_url}/{main_endpoint.table_name}',params=main_endpoint.params)
             r.raise_for_status()
         except Exception as e:
-            print(e)
+            logging.error(e)
         main_df = pd.DataFrame.from_records(r.json()["value"], index=main_endpoint.idCol)
         main_df.to_sql(main_endpoint.table_name,engine,if_exists='append')
 
@@ -73,7 +86,7 @@ def load_ukg(startDate: str|datetime, endDate: str|datetime, PaygroupId: int)->l
         main_df = combine_df(main_df,attributes_dataframes_dict)
         main_df.to_csv(f'{OUTPUT_FILE_PATH}/{main_endpoint.table_name}.csv')
         main_df.Name = main_endpoint.table_name
-        print(f"record count for {main_endpoint.table_name}: {len(main_df.index)}")
+        logger.info(f"record count for {main_endpoint.table_name}: {len(main_df.index)}")
         result_dataframes.append(main_df)
     charge_rate_df = pd.read_csv("./DataFiles/Employee_Charge_Rates.csv",index_col="UKG Name")
     add_charge_rates(Session(engine), charge_rate_df, "Charge Rate")
@@ -105,15 +118,15 @@ def load_attributes(s: requests.Session, attributes: dict, host_url: str, engine
     result_dict = dict()
     for ep, idColumn in attributes.items():
         try:
-            print(f'trying {ep}...',end="")
+            logger.info(f'trying {ep}...')
             r = s.get(f'{host_url}/{ep}')
             r.raise_for_status()
         except requests.HTTPError:
-            print(f'ERR status_code: {r.status_code}')
+            logging.error(f'ERR status_code: {r.status_code}')
         except requests.ConnectionError:
-            print("ERR Connection issue")
+            logging.error("ERR Connection issue")
         except:
-            print("unspecified error")
+            logging.error("unspecified error")
         content = pd.DataFrame.from_records(r.json()["value"], index="Id")
         content.to_sql(f"{ep}",engine,if_exists='append', method='multi')
         content = content.rename(columns={"Name": f'{ep}_Name'
@@ -123,7 +136,7 @@ def load_attributes(s: requests.Session, attributes: dict, host_url: str, engine
         content.to_csv(f'{OUTPUT_FILE_PATH}/{ep}.csv')
         content.Name = ep
         result_dict[idColumn] = content
-        print(f"record counts for {ep}:{len(content.index)}")
+        logger.info(f"record counts for {ep}:{len(content.index)}")
     return result_dict
 def add_CMiC_Dept_Name(filename: str):
     engine =sqlalchemy.create_engine("sqlite:///DataFiles/utm.db", echo=False)

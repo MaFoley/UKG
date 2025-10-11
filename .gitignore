@@ -2,6 +2,7 @@ secrets.toml
 DataFiles/*
 !DataFiles/csvexplain.md
 !DataFiles/DEPARTMENT MAP.csv
+!DataFiles/Pay_Period.csv
 __pycache__
 ipyscribbles.py
 Interactive_Timesheet*

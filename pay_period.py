@@ -3,6 +3,18 @@ import pandas as pd
 from datetime import datetime
 from functools import wraps
 from typing import Union, Literal
+import logging, sys
+OUTPUT_FILE_PATH = './DataFiles'
+logger = logging.getLogger('utm_load')
+logger.level = logging.INFO
+formatter = logging.Formatter("%(asctime)s | %(levelname)s | %(name)s | %(message)s")
+sh, fh = logging.StreamHandler(sys.stdout),logging.FileHandler(f"{OUTPUT_FILE_PATH}/middleware.log")
+sh.setFormatter(formatter)
+sh.setLevel(logger.level)
+fh.setFormatter(formatter)
+sh.setLevel(logger.level)
+logger.addHandler(sh)
+logger.addHandler(fh)
 
 payRuntoPayGroup = {'B':18,'W':43}
 
@@ -44,17 +56,17 @@ def find_period_by_date(
         ]
 
         if filtered_df.empty:
-            print(f"Date {check_date.date()} is not contained in any defined period.")
+            logger.info(f"Date {check_date.date()} is not contained in any defined period.")
             return None
         elif len(filtered_df) > 1:
             # Unexpected result, but handles overlapping periods gracefully
-            print(f"Warning: Date {check_date.date()} found in multiple periods. Returning the first match.")
+            logger.info(f"Warning: Date {check_date.date()} found in multiple periods. Returning the first match.")
             return filtered_df
         else:
             return filtered_df
 
     except Exception as e:
-        print(f"An error occurred during date parsing or comparison: {e}")
+        logger.error(f"An error occurred during date parsing or comparison: {e}")
         return None
 
 if __name__ == "__main__":
