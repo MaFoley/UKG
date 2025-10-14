@@ -4,7 +4,7 @@ from functools import wraps
 import logging, sys
 OUTPUT_FILE_PATH = './DataFiles'
 logger = logging.getLogger('ukg')
-logger.level = logging.INFO
+logger.level = logger.info
 formatter = logging.Formatter("%(asctime)s | %(levelname)s | %(name)s | %(message)s")
 sh, fh = logging.StreamHandler(sys.stdout),logging.FileHandler(f"{OUTPUT_FILE_PATH}/middleware.log")
 sh.setFormatter(formatter)
@@ -56,13 +56,13 @@ class UKGAPIClient:
                 break
             all_results.extend(current_page)
             params["page"] += 1
+        logger.info(f"get request successful from {endpoint_url=}. returning {len(all_results)} records.")
         return all_results
 
     def __del__(self):
         if self.session:
             self.session.close()
 def calculate_charge_rates(df: pandas.DataFrame, earning_code_map: dict) -> pandas.DataFrame:
-    #TODO: medge in orglevel1 to allow construction vs program management clean split
     emp_df = pandas.read_csv("./DataFiles/Employee.csv",
                              dtype={'EmpId':'string',
                                     'OrgLevel1_Name':'string'})
@@ -95,7 +95,7 @@ def calculate_charge_rates(df: pandas.DataFrame, earning_code_map: dict) -> pand
     #write to file for inspection
     save_dataframe_graceful(df_filtered,f"{OUTPUT_FILE_PATH}/pay_classifications.csv")
     save_dataframe_graceful(df_summary,f"{OUTPUT_FILE_PATH}/charge_rates.csv")
-    save_dataframe_graceful(df_pivot,f"{OUTPUT_FILE_PATH}/pivot_charge_rates.csv")
+    save_dataframe_graceful(df_pivot,f"{OUTPUT_FILE_PATH}/ukg_charge_rates.csv")
 
     #throw loud exception if unmapped earningCodes
     unmapped_check = df_filtered['pay_classification'].isna() 
@@ -104,10 +104,11 @@ def calculate_charge_rates(df: pandas.DataFrame, earning_code_map: dict) -> pand
         logger.error(f"Unmapped earningCode(s) encountered in the DataFrame: {list(unmapped_codes)}. ")
         raise ValueError(f"Unmapped earningCode(s) encountered in the DataFrame: {list(unmapped_codes)}. "
         "Please update the 'earning_code_map' dictionary.")
-    return df_summary
+    return df_pivot
 
 def filter_to_company(df, earning_code_map):
     companyId = 'PQCD4'
+    logger.info(f"filtering results based on {companyId=}")
     df_filtered = df[df['companyId']==companyId].copy()
     df_filtered['pay_classification'] = df_filtered['earningCode'].map(earning_code_map)
     df_filtered['location'] = df_filtered['location'].astype(str)
@@ -150,13 +151,13 @@ def save_dataframe_graceful(df: pandas.DataFrame, path: str):
             logging.warning(f"Permission denied error: {pe}")
             user_input = input("File write failed. Enter 'Y' to retry: ")
             if user_input.upper() == 'Y':
-                logging.info(f"Retrying file write to {path}...")
+                logger.info(f"Retrying file write to {path}...")
             else:
-                logging.error("File write aborted by user.")
+                logger.error("File write aborted by user.")
                 raise
         
         except Exception as e:
-            logging.error(f"An unexpected error occurred while saving files: {e}")
+            logger.error(f"An unexpected error occurred while saving files: {e}")
             raise
 def main():
     #earnings_df = get_earnings_history()

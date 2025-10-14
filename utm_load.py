@@ -7,6 +7,7 @@ import sqlalchemy, models
 from sqlalchemy import Select
 from sqlalchemy.orm import Session
 import logging, sys
+import ukg_charge_rate
 #Construction's ID in UKG tables
 ORGLEVEL1ID = 263
 OUTPUT_FILE_PATH = './DataFiles'
@@ -88,8 +89,8 @@ def load_ukg(startDate: str|datetime, endDate: str|datetime, PaygroupId: int)->l
         main_df.Name = main_endpoint.table_name
         logger.info(f"record count for {main_endpoint.table_name}: {len(main_df.index)}")
         result_dataframes.append(main_df)
-    charge_rate_df = pd.read_csv("./DataFiles/Employee_Charge_Rates.csv",index_col="UKG Name")
-    add_charge_rates(Session(engine), charge_rate_df, "Charge Rate")
+    charge_rate_df = ukg_charge_rate.main()
+    add_charge_rates(Session(engine), charge_rate_df, "chargeRate")
     s.close()
     add_CMiC_Dept_Name("./Datafiles/DEPARTMENT MAP.csv")
     engine.dispose()
@@ -104,11 +105,11 @@ def combine_df(main_df: pd.DataFrame, attr_dataframes_dict: dict[str, pd.DataFra
         main_df = main_df.merge(content_dataframe,left_on=[idColumn],right_index=True)
     return main_df
 def add_charge_rates(session: Session, charge_rates_df: pd.DataFrame, chargeRateColumn: str):
-    charge_rates_dict = charge_rates_df.to_dict()
+    charge_rates_dict = charge_rates_df.set_index('employeeNumber')[chargeRateColumn].to_dict()
     stmt = Select(models.Employee)
     all_employees: list[models.Employee] = session.execute(stmt).scalars().all()
     for employee in all_employees:
-        employee.ChargeRate = charge_rates_dict[chargeRateColumn].get(employee.EmpId,0)
+        employee.ChargeRate = charge_rates_dict.get(employee.shortEmpId(),0)
     session.commit()
 def get_date_string(d: datetime):
     format_string = '%Y-%m-%d'
@@ -156,7 +157,7 @@ def add_CMiC_Dept_Name(filename: str):
         # print(remapped_locations)
         session.commit()
 if __name__ == "__main__":
-    startdate = datetime(2025,9,1)
-    enddate = datetime(2025,9,7)
+    startdate = datetime(2025,9,21)
+    enddate = datetime(2025,10,4)
     PAYGROUPID = 18 #HJRC
     load_ukg(startdate, enddate, PAYGROUPID)
