@@ -1,4 +1,5 @@
 import tomllib, pandas, requests
+import numpy as np
 from functools import wraps
 import logging, sys
 OUTPUT_FILE_PATH = './DataFiles'
@@ -61,12 +62,42 @@ class UKGAPIClient:
         if self.session:
             self.session.close()
 def calculate_charge_rates(df: pandas.DataFrame, earning_code_map: dict) -> pandas.DataFrame:
-    companyId = 'PQCD4'
-    df_filtered = df[df['companyId']==companyId].copy()
-    df_filtered['pay_classification'] = df_filtered['earningCode'].map(earning_code_map)
-    df_summary = df_filtered.groupby(['pay_classification','employeeId','payDate'])['currentAmount'].sum().reset_index()
-    df_filtered.to_csv(f"{OUTPUT_FILE_PATH}/pay_classifications.csv")
-    df_summary.to_csv(f"{OUTPUT_FILE_PATH}/charge_rates.csv")
+    #TODO: medge in orglevel1 to allow construction vs program management clean split
+    emp_df = pandas.read_csv("./DataFiles/Employee.csv",
+                             dtype={'EmpId':'string',
+                                    'OrgLevel1_Name':'string'})
+    emp_df['shortEmpId'] = emp_df['EmpId'].str[3:9]
+    logger.info(emp_df.dtypes)
+    subset_cols = ['shortEmpId','OrgLevel1_Name']
+    emp_df_subset = emp_df[subset_cols]
+    df_filtered = filter_to_company(df, earning_code_map)
+    df_filtered['employeeNumber'] = df_filtered['employeeNumber'].astype(str)
+    df_filtered = pandas.merge(df_filtered,
+                               emp_df_subset,
+                               how="left",
+                               left_on="employeeNumber",
+                               right_on="shortEmpId")
+
+    # df_filtered = df_filtered.loc[df_filtered["pay_classification"] == "Wages"]
+    df_summary = df_filtered.groupby(['pay_classification','employeeId','employeeNumber','payDate','OrgLevel1_Name']).sum().reset_index()
+    group_cols = ['employeeId','employeeNumber','payDate','OrgLevel1_Name']
+    df_pivot = df_summary.pivot_table(index=group_cols,
+                                      columns='pay_classification',
+                                      values='currentAmount',
+                                      aggfunc='sum')
+    df_pivot['Burden'] = df_pivot['Burden'].fillna(0)
+    df_hours_sum = df_summary.groupby(group_cols)['currentHours'].sum().reset_index()
+    df_pivot = pandas.merge(df_pivot, df_hours_sum,on=group_cols)
+    # df_summary['chargeRate'] = df_summary['currentAmount'] / df_summary['currentHours']
+    # df_summary['chargeRate'] = df_summary['chargeRate'].round(2)
+    df_pivot = departmental_charge_rate(df_pivot)
+
+    #write to file for inspection
+    save_dataframe_graceful(df_filtered,f"{OUTPUT_FILE_PATH}/pay_classifications.csv")
+    save_dataframe_graceful(df_summary,f"{OUTPUT_FILE_PATH}/charge_rates.csv")
+    save_dataframe_graceful(df_pivot,f"{OUTPUT_FILE_PATH}/pivot_charge_rates.csv")
+
+    #throw loud exception if unmapped earningCodes
     unmapped_check = df_filtered['pay_classification'].isna() 
     if unmapped_check.any():
         unmapped_codes = df_filtered.loc[unmapped_check, 'earningCode'].unique()
@@ -74,6 +105,30 @@ def calculate_charge_rates(df: pandas.DataFrame, earning_code_map: dict) -> pand
         raise ValueError(f"Unmapped earningCode(s) encountered in the DataFrame: {list(unmapped_codes)}. "
         "Please update the 'earning_code_map' dictionary.")
     return df_summary
+
+def filter_to_company(df, earning_code_map):
+    companyId = 'PQCD4'
+    df_filtered = df[df['companyId']==companyId].copy()
+    df_filtered['pay_classification'] = df_filtered['earningCode'].map(earning_code_map)
+    df_filtered['location'] = df_filtered['location'].astype(str)
+    return df_filtered
+def departmental_charge_rate(df: pandas.DataFrame)-> pandas.DataFrame:
+    """adds charge rate column with logic for construction vs program management
+    """
+    department_map = { "Construction":"90070","Program Management":"90012" }
+    CONSTRUCTION_WAGE_MARKUP = 1.20
+    conditions = [
+        df['OrgLevel1_Name'] == department_map["Program Management"],
+        df['OrgLevel1_Name'] == department_map["Construction"]
+    ]
+    choices = [
+        df['Wages'] + df['Burden'],
+        df['Wages'] * CONSTRUCTION_WAGE_MARKUP
+    ]
+    df['chargeAmount'] = np.select(conditions,choices,default=0)
+    df['chargeRate'] = df['chargeAmount'] / df['currentHours']
+    df['chargeRate'] = df['chargeRate'].round(2)
+    return df
 def get_earnings_history():
     endpoint_url = r'payroll/v1/earnings-history-base-elements'
     sesh = UKGAPIClient(*UKGAPIClient.create_session())
@@ -83,8 +138,29 @@ def get_earnings_history():
     logger.info(f"saving {len(r)} records to {out_file}")
     earnings_df.to_csv(out_file)
     return earnings_df
+def save_dataframe_graceful(df: pandas.DataFrame, path: str):
+    successful = False
+    while not successful:
+        try:
+            df.to_csv(path, index=False)
+            logger.info(f"writing to file. {path} {len(df)=}")
+
+            successful = True
+        except PermissionError as pe:
+            logging.warning(f"Permission denied error: {pe}")
+            user_input = input("File write failed. Enter 'Y' to retry: ")
+            if user_input.upper() == 'Y':
+                logging.info(f"Retrying file write to {path}...")
+            else:
+                logging.error("File write aborted by user.")
+                raise
+        
+        except Exception as e:
+            logging.error(f"An unexpected error occurred while saving files: {e}")
+            raise
 def main():
-    earnings_df = get_earnings_history()
+    #earnings_df = get_earnings_history()
+    earnings_df = pandas.read_csv("./DataFiles/ukg_earnings_history.csv")
     with open("config.toml", "rb") as f:
         endpoint = tomllib.load(f)
     charge_rates = calculate_charge_rates(earnings_df, endpoint["earnings_mapping"])
