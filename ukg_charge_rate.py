@@ -60,11 +60,35 @@ class UKGAPIClient:
     def __del__(self):
         if self.session:
             self.session.close()
-endpoint_url = r'payroll/v2/general-ledger'
-sesh = UKGAPIClient(*UKGAPIClient.create_session())
-r = sesh.get_paginated_results(endpoint_url=endpoint_url,params={"mostRecent":None})
-out_file = f"{OUTPUT_FILE_PATH}/ukg_gl.csv"
-df = pandas.DataFrame(r)
-logger.info(f"saving {len(r)} records to {out_file}")
-df.to_csv(out_file)
+def calculate_charge_rates(df: pandas.DataFrame, earning_code_map: dict) -> pandas.DataFrame:
+    companyId = 'PQCD4'
+    df_filtered = df[df['companyId']==companyId].copy()
+    df_filtered['pay_classification'] = df_filtered['earningCode'].map(earning_code_map)
+    df_summary = df_filtered.groupby(['pay_classification','employeeId','payDate'])['currentAmount'].sum().reset_index()
+    df_filtered.to_csv(f"{OUTPUT_FILE_PATH}/pay_classifications.csv")
+    df_summary.to_csv(f"{OUTPUT_FILE_PATH}/charge_rates.csv")
+    unmapped_check = df_filtered['pay_classification'].isna() 
+    if unmapped_check.any():
+        unmapped_codes = df_filtered.loc[unmapped_check, 'earningCode'].unique()
+        logger.error(f"Unmapped earningCode(s) encountered in the DataFrame: {list(unmapped_codes)}. ")
+        raise ValueError(f"Unmapped earningCode(s) encountered in the DataFrame: {list(unmapped_codes)}. "
+        "Please update the 'earning_code_map' dictionary.")
+    return df_summary
+def get_earnings_history():
+    endpoint_url = r'payroll/v1/earnings-history-base-elements'
+    sesh = UKGAPIClient(*UKGAPIClient.create_session())
+    r = sesh.get_paginated_results(endpoint_url=endpoint_url,params={"periodControl":"202510101"})
+    out_file = f"{OUTPUT_FILE_PATH}/ukg_earnings_history.csv"
+    earnings_df = pandas.DataFrame(r)
+    logger.info(f"saving {len(r)} records to {out_file}")
+    earnings_df.to_csv(out_file)
+    return earnings_df
+def main():
+    earnings_df = get_earnings_history()
+    with open("config.toml", "rb") as f:
+        endpoint = tomllib.load(f)
+    charge_rates = calculate_charge_rates(earnings_df, endpoint["earnings_mapping"])
+    return charge_rates
+if __name__ == "__main__":
+    main()
 
