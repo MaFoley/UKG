@@ -4,13 +4,13 @@ from functools import wraps
 import logging, sys
 OUTPUT_FILE_PATH = './DataFiles'
 logger = logging.getLogger('ukg')
-logger.level = logger.info
+logger.level = logging.INFO
 formatter = logging.Formatter("%(asctime)s | %(levelname)s | %(name)s | %(message)s")
 sh, fh = logging.StreamHandler(sys.stdout),logging.FileHandler(f"{OUTPUT_FILE_PATH}/middleware.log")
 sh.setFormatter(formatter)
 sh.setLevel(logger.level)
 fh.setFormatter(formatter)
-sh.setLevel(logger.level)
+fh.setLevel(logger.level)
 logger.addHandler(sh)
 logger.addHandler(fh)
 
