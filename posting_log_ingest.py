@@ -20,6 +20,7 @@ def get_posted_keys():
         PrnCode TEXT NOT NULL,
         Status TEXT,
         Response TEXT,
+        Time_Id TEXT,
         SourceFile TEXT
     )
 """)
@@ -32,14 +33,15 @@ def get_posted_keys():
         for _, row in df.iterrows():
             try:
                 cursor.execute("""
-                    INSERT OR IGNORE INTO post_log (EmpNo, WorkDate, PrnCode, Status, Response, SourceFile)
-                    VALUES (?, ?, ?, ?, ?, ?)
+                    INSERT OR IGNORE INTO post_log (EmpNo, WorkDate, PrnCode, Status, Response, Time_Id, SourceFile)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
                 """, (
                     str(row["EmpNo"]).strip().zfill(6),
                     str(row["WorkDate"]).strip(),
                     str(row["PrnCode"]).strip(),
                     str(row["Status"]).strip(),
                     str(row["Response"]).strip(),
+                    str(row["Time_Id"]).strip(),
                     source_name,
                 ))
             except Exception as e:
