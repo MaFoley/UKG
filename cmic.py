@@ -242,7 +242,8 @@ def post_timesheets_to_CMiC(cmic_payrun: str, testing: bool=False) -> pd.DataFra
                         "PrnCode": entry.TshPrnCode,
                         "Status": "SKIPPED",
                         "Response": "No Job Code for employee",
-                        "Hours": entry.TshNormalHours
+                        "Hours": entry.TshNormalHours,
+                        "Time_Id": entry.TshUserField5
                     })
                     continue
 
@@ -257,7 +258,8 @@ def post_timesheets_to_CMiC(cmic_payrun: str, testing: bool=False) -> pd.DataFra
                         "PrnCode": entry.TshPrnCode,
                         "Status": "SKIPPED",
                         "Response": "{}",
-                        "Hours": entry.TshNormalHours
+                        "Hours": entry.TshNormalHours,
+                        "Time_Id": entry.TshUserField5
                     })
                     continue
 
@@ -282,7 +284,8 @@ def post_timesheets_to_CMiC(cmic_payrun: str, testing: bool=False) -> pd.DataFra
                     "PrnCode": entry.TshPrnCode,
                     "Status": status,
                     "Response": resp,
-                    "Hours": entry.TshNormalHours
+                    "Hours": entry.TshNormalHours,
+                    "Time_Id": entry.TshUserField5
                 })
         for retry_entry in retry_time_entries:
             jobcodecostcode = JCJobCategory(retry_entry)
@@ -298,7 +301,8 @@ def post_timesheets_to_CMiC(cmic_payrun: str, testing: bool=False) -> pd.DataFra
                     "PrnCode": retry_entry.TshPrnCode,
                     "Status": "SKIPPED",
                     "Response": "{}",
-                    "Hours": entry.TshNormalHours
+                    "Hours": entry.TshNormalHours,
+                    "Time_Id": entry.TshUserField5
                 })
                 continue
 
@@ -323,7 +327,8 @@ def post_timesheets_to_CMiC(cmic_payrun: str, testing: bool=False) -> pd.DataFra
                 "PrnCode": retry_entry.TshPrnCode,
                 "Status": status,
                 "Response": resp,
-                "Hours": retry_entry.TshNormalHours
+                "Hours": retry_entry.TshNormalHours,
+                "Time_Id": entry.TshUserField5
             })
     timestamp = datetime.now().strftime("%m%d%Y_%H%M%S")
     output_file = f"DataFiles/PostResult/PostResults_{timestamp}.csv"
@@ -331,7 +336,7 @@ def post_timesheets_to_CMiC(cmic_payrun: str, testing: bool=False) -> pd.DataFra
     source_name = output_file.split("/")[-1]
 
     with open(output_file, mode="w", newline="") as csvfile:
-        fieldnames = ["EmpNo", "WorkDate", "PrnCode", "Status", "Response","Hours", "SourceFile"]
+        fieldnames = ["EmpNo", "WorkDate", "PrnCode", "Status", "Response","Hours", "Time_Id", "SourceFile"]
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
         for row in results:

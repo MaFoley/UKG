@@ -19,6 +19,7 @@ def reset_posting_log():
         PrnCode TEXT NOT NULL,
         Status TEXT,
         Response TEXT,
+        Time_Id TEXT,
         SourceFile TEXT
     )
 """)
@@ -30,13 +31,14 @@ def reset_posting_log():
         for _, row in df.iterrows():
             try:
                 cursor.execute("""
-                    INSERT OR IGNORE INTO post_log (EmpNo, WorkDate, PrnCode, Status, Response, SourceFile)
-                    VALUES (?, ?, ?, ?, ?,?)
+                    INSERT OR IGNORE INTO post_log (EmpNo, WorkDate, PrnCode, Status, Response, Time_Id, SourceFile)
+                    VALUES (?, ?, ?, ?, ?,?,?)
                 """, (
                     str(row["EmpNo"]).strip().zfill(6),
                     str(row["WorkDate"]).strip(),
                     str(row["PrnCode"]).strip(),
                     str(row["Status"]).strip(),
+                    str(row["Time_Id"]).strip(),
                     str(row["Response"]).strip(),
                     file.name
                 ))
