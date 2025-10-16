@@ -13,15 +13,16 @@ ORGLEVEL1ID = 263
 OUTPUT_FILE_PATH = './DataFiles'
 logger = logging.getLogger('utm_load')
 logger.level = logging.INFO
-formatter = logging.Formatter("%(asctime)s | %(levelname)s | %(name)s | %(message)s")
-sh, fh = logging.StreamHandler(sys.stdout),logging.FileHandler(f"{OUTPUT_FILE_PATH}/middleware.log")
-sh.setFormatter(formatter)
-sh.setLevel(logger.level)
-fh.setFormatter(formatter)
-sh.setLevel(logger.level)
-logger.addHandler(sh)
-logger.addHandler(fh)
-
+logger.propagate = False
+if not logger.hasHandlers():
+    formatter = logging.Formatter("%(asctime)s | %(levelname)s | %(name)s | %(message)s")
+    sh, fh = logging.StreamHandler(sys.stdout),logging.FileHandler(f"{OUTPUT_FILE_PATH}/middleware.log")
+    sh.setFormatter(formatter)
+    sh.setLevel(logger.level)
+    fh.setFormatter(formatter)
+    sh.setLevel(logger.level)
+    logger.addHandler(sh)
+    logger.addHandler(fh)
 class MainEndpoint:
     def __init__(self, tableName, params, idCol):
         self.table_name = tableName
@@ -79,7 +80,7 @@ def load_ukg(startDate: str|datetime, endDate: str|datetime, PaygroupId: int)->l
             r = s.get(f'{host_url}/{main_endpoint.table_name}',params=main_endpoint.params)
             r.raise_for_status()
         except Exception as e:
-            logging.error(e)
+            logger.error(e)
         main_df = pd.DataFrame.from_records(r.json()["value"], index=main_endpoint.idCol)
         main_df.to_sql(main_endpoint.table_name,engine,if_exists='append')
 
