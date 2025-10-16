@@ -10,7 +10,7 @@ sh, fh = logging.StreamHandler(sys.stdout),logging.FileHandler(f"{OUTPUT_FILE_PA
 sh.setFormatter(formatter)
 sh.setLevel(logger.level)
 fh.setFormatter(formatter)
-sh.setLevel(logger.level)
+fh.setLevel(logger.level)
 logger.addHandler(sh)
 logger.addHandler(fh)
 
