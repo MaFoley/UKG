@@ -1,0 +1,13 @@
+# With set of jobcodes from time entries
+#Pull jcjobcategories from CMiC and create set for relevant jobs
+#identify all uncreated jobcode-costphase combos
+#log potential updates and issues warning
+#create combos and proceed with posting
+from cmic import CMiCAPIClient
+s = CMiCAPIClient(*CMiCAPIClient.create_session())
+combos = s.get_cmic_api_results(f"jc-rest-api/rest/1/jcjobcategory")
+
+for combo in combos:
+    print(combo)
+# r = s.post(f"jc-rest-api/rest/1/jcjobcategory"
+                        # , json=jobcodecostcode.__dict__.copy())

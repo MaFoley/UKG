@@ -66,37 +66,37 @@ class CMiCAPIClient:
         # === PAGINATION LOOP ===
         offset = 0
         max_offset_limit = 50000  # safeguard
-        logger.info(f"requestion records from {endpoint_url} with {limit=}")
+        self.logger.info(f"requesting records from {endpoint_url} with {limit=}")
         while True:
             logger.info(f"Requesting {offset=}...")
             params = {"offset": offset, "limit": limit}
             response = self.session.get(f"{self.host_url}/{endpoint_url}", headers=headers, params=params)
 
             if response.status_code != 200:
-                logger.info(f"Error {response.status_code}")
-                logger.info(response.text)
+                self.logger.info(f"Error {response.status_code}")
+                self.logger.info(response.text)
                 break
 
             try:
                 data = response.json()
             except json.JSONDecodeError:
-                logger.error("JSON decode fail")
-                logger.error(response.text)
+                self.logger.error("JSON decode fail")
+                self.logger.error(response.text)
                 break
 
             items = data.get("items", data.get("value", []))
             has_more = data.get("hasMore", False)
             for item in items:
                 yield item
-            logger.info(f"Retrieved {len(items)} records — {has_more=}")
+            self.logger.info(f"Retrieved {len(items)} records — {has_more=}")
 
             offset += len(items)
             if not has_more:
-                logger.info(f"No more pages. Loaded {offset} items")
+                self.logger.info(f"No more pages. Loaded {offset} items")
                 break
 
             if offset > max_offset_limit:
-                logger.info("Max offset reached.")
+                self.logger.info("Max offset reached.")
                 break
     @wraps(requests.Session.post)
     def post(self, endpoint_url: str, **kwargs):
