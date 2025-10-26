@@ -217,7 +217,7 @@ def post_timesheets_to_CMiC(cmic_payrun: str, testing: bool=False) -> pd.DataFra
 
     engine = sqlalchemy.create_engine("sqlite:///DataFiles/utm.db", echo=False)
     results = []
-    retry_time_entries = []
+    retry_time_entries: list[CMiC_Timesheet_Entry] = []
     with sqlalchemy.orm.Session(engine) as session:
         
         emp_stmt = select(Employee).where(Employee.EmpId.in_(emp_ids_in_csv))#.where(Employee.EmpId == "000223310-PQCD4")
@@ -263,7 +263,7 @@ def post_timesheets_to_CMiC(cmic_payrun: str, testing: bool=False) -> pd.DataFra
                     })
                     continue
 
-                payload = entry.__dict__.copy()
+                payload = entry.payload_dict()
 
                 try:
                     # jobcodecostcode = JCJobCategory(entry)
@@ -306,7 +306,7 @@ def post_timesheets_to_CMiC(cmic_payrun: str, testing: bool=False) -> pd.DataFra
                 })
                 continue
 
-            payload = retry_entry.__dict__.copy()
+            payload = retry_entry.payload_dict()
 
             try:
                 # jobcodecostcode = JCJobCategory(entry)
