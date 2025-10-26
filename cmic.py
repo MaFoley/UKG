@@ -5,7 +5,7 @@ from datetime import datetime
 from functools import wraps
 from collections.abc import Callable
 from sqlalchemy.orm import Session
-from models import CMiC_Employee, CMiCTradeCode, Time, Employee, CMiC_Timesheet_Entry, JCJobCategory
+from models import CMiC_Employee, CMiCTradeCode, Time, Employee, CMiC_Timesheet_Entry, JCJobCategory, Project
 from sqlalchemy import select
 import sqlalchemy
 from pathlib import Path
@@ -377,17 +377,18 @@ def load_cmic_projects():
 
     s = CMiCAPIClient(*CMiCAPIClient.create_session())
     # === FILTER & SAVE ===
+    fields_list = ["JobCode","JobName","JobDefaultDeptCode","JobCostFlag"]
+    flag_mapping = {"N": False, "Y":True}
     filtered = [
         {
-            "JobCode": job.get("JobCode"),
-            "JobName": job.get("JobName"),
-            "JobDefaultDeptCode": job.get("JobDefaultDeptCode")
+            field: job.get(field) for field in fields_list
         }
         for job in s.get_cmic_api_results(f"jc-rest-api/rest/1/jcjob", limit=500)
     ]
 
     # Create DataFrame
     df = pd.DataFrame.from_records(filtered, index="JobCode")
+    df['JobCostFlag'] = df['JobCostFlag'].map(flag_mapping)
 
     # Add new column that strips periods from JobCode
     df["JobCodeNoDots"] = df.index.str.replace(".", "", regex=False)
@@ -404,11 +405,27 @@ def load_cmic_projects():
     df.to_sql("CMiC_Project",engine,if_exists='replace')
     logger.info(f"Saved filtered project data to {csv_path}")
 
+#TODO:Write a function to find if any projects present in Time disallow transactions in CMiC
+#requires getting set of projects from Time, ensuring formatting matches CMiC, and seeing if any have jobcostflag = False
+def validate_cmic_jobs():
+    select_unique_projects = (select(Project)
+        .distinct()
+        .join(Time, Time.ProjectId == Project.Id)
+    )
+    engine =sqlalchemy.create_engine("sqlite:///DataFiles/utm.db", echo=False)
+    with Session(engine) as session:
+        logger.info("Generated SQL Query")
+        logger.info(select_unique_projects.compile(engine))
+        result = session.execute(select_unique_projects)
+        unique_projects = list(result.scalars())
+        project_disallowing_transactions = [proj.cmic_project for proj in unique_projects if proj.cmic_project is not None and not proj.cmic_project.JobCostFlag]
+        print(f"{len(project_disallowing_transactions)=}")
+        print(f"{project_disallowing_transactions=}")
 
 if __name__ == "__main__":
     # jobCodeCostCode()
     # post_timesheets_to_CMiC(testing=True)
-    employee_push("2025-09-21")
-    #load_cmic_projects()
-
+    # employee_push("2025-09-21")
+    # load_cmic_projects()
+    validate_cmic_jobs()
 

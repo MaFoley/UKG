@@ -66,6 +66,7 @@ class CMiC_Project(Base):
     JobCode: Mapped[str] = mapped_column(primary_key=True)
     JobName: Mapped[str] = mapped_column(String())
     JobDefaultDeptCode: Mapped[str] = mapped_column(String())
+    JobCostFlag: Mapped[bool] 
     JobCodeNoDots: Mapped[str] = mapped_column(String())
     def __repr__(self) -> str:
         return f"(Id={self.JobCode!r}, name={self.JobName!r}, jobCodeNoDots={self.JobCodeNoDots!r})"
