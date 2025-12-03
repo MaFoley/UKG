@@ -114,6 +114,11 @@ def create_multi_part_payload(path: str, operation: str, idfunc: Callable[[dict]
                 "id": idfunc(payload)}
         result_dict["parts"].append(part)
     return result_dict
+def more_recent_date(date1: str, date2: str) -> str:
+    datetime1 = datetime.fromisoformat(date1)
+    datetime2 = datetime.fromisoformat(date2)
+    more_recent_datetime = datetime1 if datetime1.date() > datetime2.date() else datetime2
+    return more_recent_datetime.strftime("%Y-%m-%d")
 def employee_push(effective_date: str):
     engine = sqlalchemy.create_engine("sqlite:///DataFiles/utm.db", echo=False)
     results = []
@@ -134,7 +139,7 @@ def employee_push(effective_date: str):
                                 for tc in \
                                 s.get_cmic_api_results(f"{endpoint}{field_param}",limit=500)]
         #filtered_employees = [emp for emp in all_employees if emp.companyCode() =='PQCD4']
-        cmic_employees = [CMiC_Employee(emp, effective_date) for emp in all_employees
+        cmic_employees = [CMiC_Employee(emp, more_recent_date(effective_date,emp.HireDate)) for emp in all_employees
                            if emp.companyCode() == 'PQCD4']
         trade_codes_to_post = [CMiCTradeCode(emp) for emp in all_employees
                                 if emp.job.name not in existing_trade_codes]
