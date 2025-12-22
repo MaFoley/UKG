@@ -120,12 +120,13 @@ def departmental_charge_rate(df: pandas.DataFrame)-> pandas.DataFrame:
     """
     department_map = { "Construction":"90070","Program Management":"90012" }
     CONSTRUCTION_WAGE_MARKUP = 1.20
+    PROGRAMMANAGEMENT_WAGE_MARKUP = 1.18
     conditions = [
         df['OrgLevel1_Name'] == department_map["Program Management"],
         df['OrgLevel1_Name'] == department_map["Construction"]
     ]
     choices = [
-        df['Wages'] + df['Burden'],
+        df['Wages'] * PROGRAMMANAGEMENT_WAGE_MARKUP,
         df['Wages'] * CONSTRUCTION_WAGE_MARKUP
     ]
     df['chargeAmount'] = np.select(conditions,choices,default=0)
