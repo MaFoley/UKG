@@ -250,7 +250,7 @@ class CMiC_Timesheet_Entry:
         self.TshDotHours:float = time_entry.Overt2
         self.TshWcbCode = None #TODO: attach workers comp code
         self.TshOhType = None
-        self.TshUserField5 = time_entry.Id #Saving UKG time ID in userfield5 for auditing
+        #self.TshUserField5 = time_entry.Id #Saving UKG time ID in userfield5 for auditing
         self.TshDocumentNo = "-".join([self.TshEmpNo, self.TshPrnCode + str(self.TshPprYear) + str(self.TshPprPeriod)])
 
     def _findPayRun(self, paygroup: str) -> str:
