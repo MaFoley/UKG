@@ -42,7 +42,7 @@ def create_session() -> requests.Session:
     s.auth = my_auth
     return s
 
-def load_ukg(startDate: str|datetime, endDate: str|datetime, PaygroupId: int)->list[pd.DataFrame]:
+def load_ukg(startDate: str|datetime, endDate: str|datetime, PaygroupId: int, charge_rate_df: pd.DataFrame)->list[pd.DataFrame]:
     if isinstance(startDate, datetime):
         filterStartDate = get_date_string(startDate)
         filterEndDate = get_date_string(endDate)
@@ -90,7 +90,7 @@ def load_ukg(startDate: str|datetime, endDate: str|datetime, PaygroupId: int)->l
         main_df.Name = main_endpoint.table_name
         logger.info(f"record count for {main_endpoint.table_name}: {len(main_df.index)}")
         result_dataframes.append(main_df)
-    charge_rate_df = ukg_charge_rate.main()
+    # charge_rate_df = ukg_charge_rate.main()
     add_charge_rates(Session(engine), charge_rate_df, "chargeRate")
     s.close()
     add_CMiC_Dept_Name("./Datafiles/DEPARTMENT MAP.csv")

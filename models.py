@@ -220,7 +220,7 @@ class CMiC_Timesheet_Entry:
         """
         self.TshPrnCode = self._findPayRun(time_entry.paygroup.name)
         self.TshDate: str = parser.parse(time_entry.WorkDate).strftime('%Y-%m-%d')
-        self.TshPprYear = parser.parse(time_entry.WorkDate).year
+        self.TshPprYear = self._TshPprYear(parser.parse(time_entry.WorkDate))
         self.TshPprPeriod = self._TshPprPeriod(parser.parse(time_entry.WorkDate))
         self.TshEmpNo = time_entry.employee.shortEmpId()
         self.TshUnionCode = None
@@ -261,13 +261,24 @@ class CMiC_Timesheet_Entry:
             return 'W'
         else:
             return 'New Paygroup'
+    def _TshPprYear(self, date: datetime) -> int:
+        #if tshdate > prior period start date and <= period end date, then return pay period
+        yearEnds = {2025: datetime(2025,12,27)
+                    ,2026: datetime(2026,12,26)}
+        #TODO: future-proof for non 2026 years
+        if date <= yearEnds[2026] and date > yearEnds[2025]:
+            return 2026
+        else:
+            return date.year
     def _TshPprPeriod(self, date: datetime) -> int:
         #if tshdate > prior period start date and <= period end date, then return pay period
         periodEndDate = datetime(2024,12,29)
         #B for biweekly, else Weekly
         periodLength = 14 if self.TshPrnCode == 'B' else 7
+        numPeriods = 26 if self.TshPrnCode == 'B' else 52
         delta = date - periodEndDate
-        return delta.days // periodLength + 1
+        return (delta.days // periodLength + 1) % numPeriods
+
     def payload_dict(self, excluded_keys:set = {"TshUserField5"}) -> dict:
         return {key : value for key, value in self.__dict__.items() if key not in excluded_keys}
     def __eq__(self, other):

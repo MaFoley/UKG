@@ -429,8 +429,8 @@ def validate_cmic_jobs():
 
 if __name__ == "__main__":
     # jobCodeCostCode()
-    # post_timesheets_to_CMiC(testing=True)
+    post_timesheets_to_CMiC('B', testing=True)
     # employee_push("2025-09-21")
     # load_cmic_projects()
-    validate_cmic_jobs()
+    # validate_cmic_jobs()
 
