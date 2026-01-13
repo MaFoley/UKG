@@ -163,8 +163,8 @@ def save_dataframe_graceful(df: pandas.DataFrame, path: str):
             logger.error(f"An unexpected error occurred while saving files: {e}")
             raise
 def main():
-    #earnings_df = get_earnings_history()
-    earnings_df = pandas.read_csv("./DataFiles/ukg_earnings_history.csv")
+    earnings_df = get_earnings_history()
+    # earnings_df = pandas.read_csv("./DataFiles/ukg_earnings_history.csv")
     with open("config.toml", "rb") as f:
         endpoint = tomllib.load(f)
     charge_rates = calculate_charge_rates(earnings_df, endpoint["earnings_mapping"])
