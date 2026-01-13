@@ -277,7 +277,7 @@ class CMiC_Timesheet_Entry:
         periodLength = 14 if self.TshPrnCode == 'B' else 7
         numPeriods = 26 if self.TshPrnCode == 'B' else 52
         delta = date - periodEndDate
-        return (delta.days // periodLength + 1) % numPeriods
+        return (delta.days // periodLength  % numPeriods) +1
 
     def payload_dict(self, excluded_keys:set = {"TshUserField5"}) -> dict:
         return {key : value for key, value in self.__dict__.items() if key not in excluded_keys}
