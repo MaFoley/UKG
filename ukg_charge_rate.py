@@ -133,10 +133,10 @@ def departmental_charge_rate(df: pandas.DataFrame)-> pandas.DataFrame:
     df['chargeRate'] = df['chargeAmount'] / df['currentHours']
     df['chargeRate'] = df['chargeRate'].round(2)
     return df
-def get_earnings_history():
+def get_earnings_history(periodControl):
     endpoint_url = r'payroll/v1/earnings-history-base-elements'
     sesh = UKGAPIClient(*UKGAPIClient.create_session())
-    r = sesh.get_paginated_results(endpoint_url=endpoint_url,params={"periodControl":"202510101"})
+    r = sesh.get_paginated_results(endpoint_url=endpoint_url,params={"periodControl": periodControl})
     out_file = f"{OUTPUT_FILE_PATH}/ukg_earnings_history.csv"
     earnings_df = pandas.DataFrame(r)
     logger.info(f"saving {len(r)} records to {out_file}")
@@ -162,13 +162,16 @@ def save_dataframe_graceful(df: pandas.DataFrame, path: str):
         except Exception as e:
             logger.error(f"An unexpected error occurred while saving files: {e}")
             raise
-def main():
-    earnings_df = get_earnings_history()
+def main(period_control):
+    earnings_df = get_earnings_history(period_control)
     # earnings_df = pandas.read_csv("./DataFiles/ukg_earnings_history.csv")
     with open("config.toml", "rb") as f:
         endpoint = tomllib.load(f)
     charge_rates = calculate_charge_rates(earnings_df, endpoint["earnings_mapping"])
     return charge_rates
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) > 1:
+        main(sys.argv[1])
+    else:
+        print("Please provide an argument.")
 
