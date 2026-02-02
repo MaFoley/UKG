@@ -168,6 +168,7 @@ def main(period_control):
     with open("config.toml", "rb") as f:
         endpoint = tomllib.load(f)
     charge_rates = calculate_charge_rates(earnings_df, endpoint["earnings_mapping"])
+    save_dataframe_graceful(charge_rates,f"./DataFiles/ukg_charge_rates_{period_control}.csv")
     return charge_rates
 if __name__ == "__main__":
     if len(sys.argv) > 1:

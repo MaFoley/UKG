@@ -24,8 +24,8 @@ Time = ""
 #    "ScheduleRequest"
 #    "Timesheet"
 [CMiC_Base]
-#host_url = 'https://nova-api.cmiccloud.com/cmicprod'
-host_url = 'https://nova-api-test.cmiccloud.com/cmictest'
+host_url = 'https://nova-api.cmiccloud.com/cmicprod'
+#host_url = 'https://nova-api-test.cmiccloud.com/cmictest'
 [Logging]
 level = 'INFO'
 [earnings_mapping]
@@ -45,3 +45,4 @@ HOL = 'Wages'
 SEV = 'Burden'
 BONUS = 'Burden'
 BOUSC = 'Burden'
+RETRO = 'Wages'

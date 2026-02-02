@@ -7,3 +7,4 @@ __pycache__
 ipyscribbles.py
 test_periodControl.ipynb
 Interactive_Timesheet*
+.vscode/*
