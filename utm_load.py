@@ -8,6 +8,7 @@ from sqlalchemy import Select
 from sqlalchemy.orm import Session
 import logging, sys
 import ukg_charge_rate
+from collections import defaultdict
 #Construction's ID in UKG tables
 ORGLEVEL1ID = 263
 OUTPUT_FILE_PATH = './DataFiles'
@@ -94,6 +95,7 @@ def load_ukg(startDate: str|datetime, endDate: str|datetime, PaygroupId: int, ch
     add_charge_rates(Session(engine), charge_rate_df, "chargeRate")
     s.close()
     add_CMiC_Dept_Name("./Datafiles/DEPARTMENT MAP.csv")
+    add_Org2_CMiC_Dept("./DataFiles/OrgLevel2_Department_Map.csv")
     engine.dispose()
     return result_dataframes
 def combine_df(main_df: pd.DataFrame, attr_dataframes_dict: dict[str, pd.DataFrame])-> pd.DataFrame:
@@ -157,6 +159,25 @@ def add_CMiC_Dept_Name(filename: str):
         remapped_locations = [location for location in all_locations if location.CMiC_Department_ID]
         # print(remapped_locations)
         session.commit()
+def add_Org2_CMiC_Dept(mapping_file:str):
+    df_filepath = "DataFiles/OrgLevel2.csv"
+    engine =sqlalchemy.create_engine("sqlite:///DataFiles/utm.db", echo=False)
+    stmt = Select(models.OrgLevel2)
+    with Session(engine) as session:
+        all_orglevel2 = session.execute(stmt).scalars().all()
+        org_level2_department_df = pd.read_csv(mapping_file, header=0, usecols=[1, 3])
+        dept_map = {str(k).strip(): str(v).strip()
+                     for k,v in zip(org_level2_department_df['OrgLevel2_Name'],org_level2_department_df['OrgLevel2_Department'])}
+        default_dept_map = defaultdict(lambda: "Not Applicable"
+                               ,dept_map)
+        for orglevel2 in all_orglevel2:
+            orglevel2.CMiC_Department_ID = default_dept_map[orglevel2.name]
+        session.commit()
+        org_level2_df = pd.read_csv(df_filepath,header=0)
+        org_level2_df['CMiC_Department'] = org_level2_df['OrgLevel2_Name'].map(default_dept_map)
+        print(org_level2_df)
+        org_level2_df.to_csv(df_filepath)
+    logger.info(org_level2_df.info())
 if __name__ == "__main__":
     startdate = datetime(2025,9,21)
     enddate = datetime(2025,10,4)

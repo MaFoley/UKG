@@ -38,8 +38,9 @@ class OrgLevel2(Base):
     Id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String())
     description: Mapped[str] = mapped_column(String())
+    CMiC_Department_ID: Mapped[str] = mapped_column(String(), nullable=True)
     def __repr__(self) -> str:
-        return f"(Id={self.Id!r}, name={self.name!r}, description={self.description!r})"
+        return f"(Id={self.Id!r}, name={self.name!r}, description={self.description!r}, CMiC_Department_ID={self.CMiC_Department_ID!r})"
 class OrgLevel3(Base):
     __tablename__ = "OrgLevel3"
     Id: Mapped[int] = mapped_column(primary_key=True)
@@ -319,15 +320,9 @@ class CMiC_Employee:
         self.EmpCompCode = 'HJR'
         self.EmpDeptCode = emp.location.CMiC_Department_ID
         self.EmpPrnCode = emp.paygroup.get_cmic_payrun()
-        self.EmpPygCode = 'PMOH' if emp.location.CMiC_Department_ID== 'PMG' else 'CNOH'#I think this will work, does it even matter though
         self.EmpTrdCode = emp.job.name 
         self.EmpWrlCode = 'ATL'
         self.EmpHourlyRate = 1
-        self.EmpChargeOutRate = (
-            config["Union_Charge_Rate"]["rate"]
-            if self.EmpPrnCode == 'W'
-            else emp.ChargeRate if emp.ChargeRate != 0 else None#need provided info
-        )
         self.EmpBillingRate = 3 #need provided info
         self.EmpSecGrpEmpCode = 'MASTER'
         self.EmpFilingStatus = '01'
@@ -355,7 +350,20 @@ class CMiC_Employee:
         self.EmpPreferPayRate = 'E'
         self.EmpPreferChargeRate = 'E'
         self.EmpPreferBillRate = 'E'
+        self.EmpPygCode = self._determine_pyg_Code(emp)
+        self.EmpChargeOutRate = self._determine_charge_rate(emp)
         self.EmpDirectDepMethod = 'N'            
+
+    def _determine_pyg_Code(self, emp: Employee) -> str:
+        if self.EmpTrdCode == 'HCN677': #trade code for Tenant Coordinator
+            return 'HRLY'
+        if emp.location.CMiC_Department_ID == 'PMG':
+            return 'PMOH'
+        return 'CNOH'
+    def _determine_charge_rate(self, emp: Employee):
+        if self.EmpPrnCode == 'W':
+            return config["Union_Charge_Rate"]["rate"]
+        return emp.ChargeRate if emp.ChargeRate != 0 else None
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
             return False
