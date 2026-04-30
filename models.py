@@ -362,6 +362,8 @@ class CMiC_Employee:
         return 'CNOH'
     def _determine_charge_rate(self, emp: Employee):
         if self.EmpPrnCode == 'W':
+            if str(self.EmpNo) == '223543':
+                return 89.75
             return config["Union_Charge_Rate"]["rate"]
         return emp.ChargeRate if emp.ChargeRate != 0 else None
     def __eq__(self, other):
