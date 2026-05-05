@@ -5,7 +5,7 @@ from datetime import datetime
 from functools import wraps
 from collections.abc import Callable
 from sqlalchemy.orm import Session
-from models import CMiC_Employee, CMiCTradeCode, Time, Employee, CMiC_Timesheet_Entry, JCJobCategory, Project
+from models import Base, CMiC_Employee, CMiCTradeCode, Time, Employee, CMiC_Timesheet_Entry, JCJobCategory, Project
 from sqlalchemy import select
 import sqlalchemy
 from pathlib import Path
@@ -44,6 +44,8 @@ class CMiCAPIClient:
 
         #establish CMiC API
         env = endpoint["CMiC_Base"]["env"]
+        if env not in ("prod", "test"):
+            raise ValueError(F"Invalid {env!r}")
         host_url = endpoint["CMiC_Base"][f"{env}_host_url"]
         username = endpoint["CMiC_Base"][f"{env}_username"]
         password = endpoint["CMiC_Base"][f"{env}_password"]
@@ -336,11 +338,11 @@ def post_timesheets_to_CMiC(cmic_payrun: str, testing: bool=False) -> pd.DataFra
                 "Hours": retry_entry.TshNormalHours,
                 "Time_Id": entry.TshUserField5
             })
+    export_all_tables(session, "./DataFiles/ResultDB")
     timestamp = datetime.now().strftime("%m%d%Y_%H%M%S")
     output_file = f"DataFiles/PostResult/PostResults_{timestamp}.csv"
 
     source_name = output_file.split("/")[-1]
-
     with open(output_file, mode="w", newline="") as csvfile:
         fieldnames = ["EmpNo", "WorkDate", "PrnCode", "Status", "Response","Hours", "Time_Id", "SourceFile"]
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
@@ -427,7 +429,20 @@ def validate_cmic_jobs():
         project_disallowing_transactions = [proj.cmic_project for proj in unique_projects if proj.cmic_project is not None and not proj.cmic_project.JobCostFlag]
         print(f"{len(project_disallowing_transactions)=}")
         print(f"{project_disallowing_transactions=}")
-
+def export_all_tables(session: Session, output_dir: str = ".") -> dict[str, int]:
+    exported = {}
+    for table_name, table in Base.metadata.tables.items():
+        rows = session.execute(table.select()).fetchall()
+        if not rows:
+            continue
+        filepath = f"{output_dir}/{table_name}.csv"
+        columns = [col.key for col in table.columns]
+        with open(filepath, "w", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=columns)
+            writer.writeheader()
+            writer.writerows([row._mapping for row in rows])
+        exported[table_name] = len(rows)
+    return exported
 if __name__ == "__main__":
     # jobCodeCostCode()
     post_timesheets_to_CMiC('B', testing=True)
