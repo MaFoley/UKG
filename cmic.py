@@ -43,9 +43,10 @@ class CMiCAPIClient:
             endpoint.update(tomllib.load(f))
 
         #establish CMiC API
-        host_url = endpoint["CMiC_Base"]["host_url"]
-        username = endpoint["CMiC_Base"]["username"]
-        password = endpoint["CMiC_Base"]["password"]
+        env = endpoint["CMiC_Base"]["env"]
+        host_url = endpoint["CMiC_Base"][f"{env}_host_url"]
+        username = endpoint["CMiC_Base"][f"{env}_username"]
+        password = endpoint["CMiC_Base"][f"{env}_password"]
         my_auth = requests.auth.HTTPBasicAuth(username, password)
         return host_url, my_auth
 

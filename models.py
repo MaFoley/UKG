@@ -213,48 +213,71 @@ class CMiC_Timesheet_Entry:
     Meat and potatoes of the middleware.
     Constructor ingests a UKG Time object and generates the required format for posting to CMiC
     """
+    __tablename__ = "CMiC_Timesheet_Entry"
+
+    Id: Mapped[int] = mapped_column(primary_key=True)# UKG Time.Id for auditing
+    TshPrnCode: Mapped[str] = mapped_column(String(), nullable=True)
+    TshDate: Mapped[str] = mapped_column(String(), nullable=True)
+    TshPprYear: Mapped[int] = mapped_column(nullable=True)
+    TshPprPeriod: Mapped[int] = mapped_column(nullable=True)
+    TshEmpNo: Mapped[str] = mapped_column(String(), nullable=True)
+    TshUnionCode: Mapped[str] = mapped_column(String(), nullable=True)
+    TshTradeCode: Mapped[str] = mapped_column(String(), nullable=True)
+    TshPhsacctwiId: Mapped[str] = mapped_column(String(), nullable=True)
+    TshTypeCode: Mapped[str] = mapped_column(String(), nullable=True)
+    TshJobdeptwoId: Mapped[str] = mapped_column(String(), nullable=True)
+    TshNormalHours: Mapped[float] = mapped_column(nullable=True)
+    TshCompCode: Mapped[str] = mapped_column(String(), nullable=True)
+    TshWorkCompCode: Mapped[str] = mapped_column(String(), nullable=True)
+    TshCatexpId: Mapped[str] = mapped_column(String(), nullable=True)
+    TshOtHours: Mapped[float] = mapped_column(nullable=True)
+    TshDotHours: Mapped[float] = mapped_column(nullable=True)
+    TshWcbCode: Mapped[str] = mapped_column(String(), nullable=True)
+    TshOhType: Mapped[str] = mapped_column(String(), nullable=True)
+    TshDocumentNo: Mapped[str] = mapped_column(String(), nullable=True)
+
     WEEKLYPAYGROUP = 'HJRU'
     BIWEEKLYPAYGROUP = 'HJRC'
-    def __init__(self, time_entry: Time):
-        """
-        TshDate expected in yyyy-mm-dd format
-        """
-        self.TshPrnCode = self._findPayRun(time_entry.paygroup.name)
-        self.TshDate: str = parser.parse(time_entry.WorkDate).strftime('%Y-%m-%d')
-        self.TshPprYear = self._TshPprYear(parser.parse(time_entry.WorkDate))
-        self.TshPprPeriod = self._TshPprPeriod(parser.parse(time_entry.WorkDate))
-        self.TshEmpNo = time_entry.employee.shortEmpId()
-        self.TshUnionCode = None
-        if time_entry.job != None:
-            self.TshTradeCode = time_entry.job.name #time->emp->jobid->job.name
-            self.TshPhsacctwiId = time_entry.orglevel3.name
+
+    @classmethod
+    def from_time_entry(cls, time_entry: "Time") -> "CMiC_Timesheet_Entry":
+        obj = cls()
+        obj.Id = time_entry.Id
+        obj.TshPrnCode = obj._findPayRun(time_entry.paygroup.name)
+        obj.TshDate = parser.parse(time_entry.WorkDate).strftime('%Y-%m-%d')
+        obj.TshPprYear = obj._TshPprYear(parser.parse(time_entry.WorkDate))
+        obj.TshPprPeriod = obj._TshPprPeriod(parser.parse(time_entry.WorkDate))
+        obj.TshEmpNo = time_entry.employee.shortEmpId()
+        obj.TshUnionCode = None
+        if time_entry.job is not None:
+            obj.TshTradeCode = time_entry.job.name
+            obj.TshPhsacctwiId = time_entry.orglevel3.name
         else:
-            self.TshTradeCode = None
-            self.TshPhsacctwiId = None
-            
+            obj.TshTradeCode = None
+            obj.TshPhsacctwiId = None
+
         project_name = time_entry.project.name if time_entry.project else ""
 
         if project_name[-4:] == "0000" or "PROJ" in project_name or "Z" == project_name:
-            self.TshTypeCode = 'G'
-            self.TshJobdeptwoId = time_entry.employee.location.CMiC_Department_ID
-            self.TshPhsacctwiId = '600.004'
+            obj.TshTypeCode = 'G'
+            obj.TshJobdeptwoId = time_entry.employee.location.CMiC_Department_ID
+            obj.TshPhsacctwiId = '600.004'
         elif time_entry.project and time_entry.project.cmic_project:
-            self.TshTypeCode = 'J'
-            self.TshJobdeptwoId = time_entry.project.cmic_project.JobCode
+            obj.TshTypeCode = 'J'
+            obj.TshJobdeptwoId = time_entry.project.cmic_project.JobCode
         else:
-            self.TshJobdeptwoId = None
+            obj.TshJobdeptwoId = None
 
-        self.TshNormalHours: float = time_entry.RegHr
-        self.TshCompCode = time_entry.companyCode()
-        self.TshWorkCompCode = self.TshCompCode
-        self.TshCatexpId = 'L'
-        self.TshOtHours: float = time_entry.Overt1
-        self.TshDotHours:float = time_entry.Overt2
-        self.TshWcbCode = None #TODO: attach workers comp code
-        self.TshOhType = None
-        self.TshUserField5 = time_entry.Id #Saving UKG time ID in userfield5 for auditing
-        self.TshDocumentNo = "-".join([self.TshEmpNo, self.TshPrnCode + str(self.TshPprYear) + str(self.TshPprPeriod)])
-
+        obj.TshNormalHours = time_entry.RegHr
+        obj.TshCompCode = time_entry.companyCode()
+        obj.TshWorkCompCode = obj.TshCompCode
+        obj.TshCatexpId = 'L'
+        obj.TshOtHours = time_entry.Overt1
+        obj.TshDotHours = time_entry.Overt2
+        obj.TshWcbCode = None
+        obj.TshOhType = None
+        obj.TshDocumentNo = "-".join([obj.TshEmpNo, obj.TshPrnCode + str(obj.TshPprYear) + str(obj.TshPprPeriod)])
+        return obj
     def _findPayRun(self, paygroup: str) -> str:
         if paygroup.upper().strip() == self.BIWEEKLYPAYGROUP:
             return 'B'
@@ -280,7 +303,7 @@ class CMiC_Timesheet_Entry:
         delta = date - periodEndDate
         return (delta.days // periodLength  % numPeriods) +1
 
-    def payload_dict(self, excluded_keys:set = {"TshUserField5"}) -> dict:
+    def payload_dict(self, excluded_keys:set = {"Id"}) -> dict:
         return {key : value for key, value in self.__dict__.items() if key not in excluded_keys}
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
@@ -302,58 +325,109 @@ class CMiC_Timesheet_Entry:
             repr_str += f"{key}={val}\n, "
         
         return repr_str.strip(", ") + ')'
-class CMiC_Employee:   
-    def __init__(self, emp: Employee, effective_date: str):
-        #default to new record action code
-        self.EmhActionCode = "NR"
-        self.EmpCreateAccessCode = "N"
-        self.EmhEffectiveDate = effective_date #yyyy-mm-dd
-        self.EmpNo= emp.shortEmpId()
-        self.EmpPrimaryEmpNo = emp.shortEmpId()
-        self.EmpUser = 'NSMITH'
-        self.EmpLastName= emp.LastName
-        self.EmpFirstName = emp.FirstName
-        self.EmpSinNo= '123456789' #plug
-        self.EmpStatus = 'A'
-        self.EmpDateOfBirth = '1999-01-01' #plug
-        self.EmpHireDate = '1999-01-02'#plug
-        self.EmpCompCode = 'HJR'
-        self.EmpDeptCode = emp.location.CMiC_Department_ID
-        self.EmpPrnCode = emp.paygroup.get_cmic_payrun()
-        self.EmpTrdCode = emp.job.name 
-        self.EmpWrlCode = 'ATL'
-        self.EmpHourlyRate = 1
-        self.EmpBillingRate = 3 #need provided info
-        self.EmpSecGrpEmpCode = 'MASTER'
-        self.EmpFilingStatus = '01'
-        self.EmpVUuid = ''
-        self.EmpCountryCode = 'US'
-        self.EmpStateCode = 'GA'
-        self.EmpZipCode = '30152'
-        self.EmpFlsaType = 'N'
-        self.EmpVertexGeocodeSource = 'M'
-        self.EmpType = 'S'
-        self.EmpFullPartTime = 'F'
-        self.EmpSubStatus = 'W'
-        self.EmpUnionized = 'N'
-        self.EmpAdjustedSeriviceDate = '1999-01-02'
-        self.EmpYearWorkingDays = 260.0
-        self.EmpYearWorkingHours = 2080.0
-        self.EmpUeValidFlag = 'Y'
-        self.EmpHomeDeptCode =  emp.location.CMiC_Department_ID # Mapped
-        self.EmpGlAccCode = '600.004'
-        self.EmpPayrollClearAccCode = '240.001'
-        self.EmpDrClearAccCode = '240.001'
-        self.EmpLevAcruGlAccCode = '240.001'
-        self.EmpLevClearAccCode = '240.001'
-        self.EmpAnnualSalary = 100 #I think this is acceptable as a plug unless it has a meaningful impact on charge/bill rate
-        self.EmpPreferPayRate = 'E'
-        self.EmpPreferChargeRate = 'E'
-        self.EmpPreferBillRate = 'E'
-        self.EmpPygCode = self._determine_pyg_Code(emp)
-        self.EmpChargeOutRate = self._determine_charge_rate(emp)
-        self.EmpDirectDepMethod = 'N'            
+class CMiC_Employee(Base):   
+    __tablename__ = "CMiC_Employee"
+    EmpNo: Mapped[str] = mapped_column(String(), primary_key=True)
+    EmhActionCode: Mapped[str] = mapped_column(String(), nullable=True)
+    EmpCreateAccessCode: Mapped[str] = mapped_column(String(), nullable=True)
+    EmhEffectiveDate: Mapped[str] = mapped_column(String(), nullable=True)
+    EmpPrimaryEmpNo: Mapped[str] = mapped_column(String(), nullable=True)
+    EmpUser: Mapped[str] = mapped_column(String(), nullable=True)
+    EmpLastName: Mapped[str] = mapped_column(String(), nullable=True)
+    EmpFirstName: Mapped[str] = mapped_column(String(), nullable=True)
+    EmpSinNo: Mapped[str] = mapped_column(String(), nullable=True)
+    EmpStatus: Mapped[str] = mapped_column(String(), nullable=True)
+    EmpDateOfBirth: Mapped[str] = mapped_column(String(), nullable=True)
+    EmpHireDate: Mapped[str] = mapped_column(String(), nullable=True)
+    EmpCompCode: Mapped[str] = mapped_column(String(), nullable=True)
+    EmpDeptCode: Mapped[str] = mapped_column(String(), nullable=True)
+    EmpPrnCode: Mapped[str] = mapped_column(String(), nullable=True)
+    EmpPygCode: Mapped[str] = mapped_column(String(), nullable=True)
+    EmpTrdCode: Mapped[str] = mapped_column(String(), nullable=True)
+    EmpWrlCode: Mapped[str] = mapped_column(String(), nullable=True)
+    EmpHourlyRate: Mapped[float] = mapped_column(nullable=True)
+    EmpChargeOutRate: Mapped[float] = mapped_column(nullable=True)
+    EmpBillingRate: Mapped[float] = mapped_column(nullable=True)
+    EmpSecGrpEmpCode: Mapped[str] = mapped_column(String(), nullable=True)
+    EmpFilingStatus: Mapped[str] = mapped_column(String(), nullable=True)
+    EmpVUuid: Mapped[str] = mapped_column(String(), nullable=True)
+    EmpCountryCode: Mapped[str] = mapped_column(String(), nullable=True)
+    EmpStateCode: Mapped[str] = mapped_column(String(), nullable=True)
+    EmpZipCode: Mapped[str] = mapped_column(String(), nullable=True)
+    EmpFlsaType: Mapped[str] = mapped_column(String(), nullable=True)
+    EmpVertexGeocodeSource: Mapped[str] = mapped_column(String(), nullable=True)
+    EmpType: Mapped[str] = mapped_column(String(), nullable=True)
+    EmpFullPartTime: Mapped[str] = mapped_column(String(), nullable=True)
+    EmpSubStatus: Mapped[str] = mapped_column(String(), nullable=True)
+    EmpUnionized: Mapped[str] = mapped_column(String(), nullable=True)
+    EmpAdjustedSeriviceDate: Mapped[str] = mapped_column(String(), nullable=True)
+    EmpYearWorkingDays: Mapped[float] = mapped_column(nullable=True)
+    EmpYearWorkingHours: Mapped[float] = mapped_column(nullable=True)
+    EmpUeValidFlag: Mapped[str] = mapped_column(String(), nullable=True)
+    EmpHomeDeptCode: Mapped[str] = mapped_column(String(), nullable=True)
+    EmpGlAccCode: Mapped[str] = mapped_column(String(), nullable=True)
+    EmpPayrollClearAccCode: Mapped[str] = mapped_column(String(), nullable=True)
+    EmpDrClearAccCode: Mapped[str] = mapped_column(String(), nullable=True)
+    EmpLevAcruGlAccCode: Mapped[str] = mapped_column(String(), nullable=True)
+    EmpLevClearAccCode: Mapped[str] = mapped_column(String(), nullable=True)
+    EmpAnnualSalary: Mapped[float] = mapped_column(nullable=True)
+    EmpPreferPayRate: Mapped[str] = mapped_column(String(), nullable=True)
+    EmpPreferChargeRate: Mapped[str] = mapped_column(String(), nullable=True)
+    EmpPreferBillRate: Mapped[str] = mapped_column(String(), nullable=True)
+    EmpDirectDepMethod: Mapped[str] = mapped_column(String(), nullable=True)
 
+    @classmethod
+    def from_employee(cls, emp: "Employee", effective_date: str) -> "CMiC_Employee":
+        obj = cls()
+        obj.EmhActionCode = "NR"
+        obj.EmpCreateAccessCode = "N"
+        obj.EmhEffectiveDate = effective_date
+        obj.EmpNo = emp.shortEmpId()
+        obj.EmpPrimaryEmpNo = emp.shortEmpId()
+        obj.EmpUser = 'NSMITH'
+        obj.EmpLastName = emp.LastName
+        obj.EmpFirstName = emp.FirstName
+        obj.EmpSinNo = '123456789'
+        obj.EmpStatus = 'A'
+        obj.EmpDateOfBirth = '1999-01-01'
+        obj.EmpHireDate = '1999-01-02'
+        obj.EmpCompCode = 'HJR'
+        obj.EmpDeptCode = emp.location.CMiC_Department_ID
+        obj.EmpPrnCode = emp.paygroup.get_cmic_payrun()
+        obj.EmpPygCode = 'PMOH' if emp.location.CMiC_Department_ID == 'PMG' else 'CNOH'
+        obj.EmpTrdCode = emp.job.name
+        obj.EmpWrlCode = 'ATL'
+        obj.EmpHourlyRate = 1
+        obj.EmpChargeOutRate = obj._determine_charge_rate(emp)
+        obj.EmpBillingRate = 3
+        obj.EmpSecGrpEmpCode = 'MASTER'
+        obj.EmpFilingStatus = '01'
+        obj.EmpVUuid = ''
+        obj.EmpCountryCode = 'US'
+        obj.EmpStateCode = 'GA'
+        obj.EmpZipCode = '30152'
+        obj.EmpFlsaType = 'N'
+        obj.EmpVertexGeocodeSource = 'M'
+        obj.EmpType = 'S'
+        obj.EmpFullPartTime = 'F'
+        obj.EmpSubStatus = 'W'
+        obj.EmpUnionized = 'N'
+        obj.EmpAdjustedSeriviceDate = '1999-01-02'
+        obj.EmpYearWorkingDays = 260.0
+        obj.EmpYearWorkingHours = 2080.0
+        obj.EmpUeValidFlag = 'Y'
+        obj.EmpHomeDeptCode = emp.location.CMiC_Department_ID
+        obj.EmpGlAccCode = '600.004'
+        obj.EmpPayrollClearAccCode = '240.001'
+        obj.EmpDrClearAccCode = '240.001'
+        obj.EmpLevAcruGlAccCode = '240.001'
+        obj.EmpLevClearAccCode = '240.001'
+        obj.EmpAnnualSalary = 100
+        obj.EmpPreferPayRate = 'E'
+        obj.EmpPreferChargeRate = 'E'
+        obj.EmpPreferBillRate = 'E'
+        obj.EmpDirectDepMethod = 'N'
+        return obj
     def _determine_pyg_Code(self, emp: Employee) -> str:
         if self.EmpTrdCode == 'HCN677': #trade code for Tenant Coordinator
             return 'HRLY'
