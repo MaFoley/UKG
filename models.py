@@ -208,7 +208,7 @@ class Employee(Base):
         return self.EmpId[3:9]
     def __repr__(self) -> str:
         return f"(Employee object Id={self.Id!r}, EmpId={self.EmpId!r}, Name: {self.FirstName} {self.LastName})"
-class CMiC_Timesheet_Entry:
+class CMiC_Timesheet_Entry(Base):
     """
     Meat and potatoes of the middleware.
     Constructor ingests a UKG Time object and generates the required format for posting to CMiC
@@ -303,8 +303,8 @@ class CMiC_Timesheet_Entry:
         delta = date - periodEndDate
         return (delta.days // periodLength  % numPeriods) +1
 
-    def payload_dict(self, excluded_keys:set = {"Id"}) -> dict:
-        return {key : value for key, value in self.__dict__.items() if key not in excluded_keys}
+    def payload_dict(self, excluded_keys: set = {"Id"}) -> dict:
+        return {k: v for k, v in self.__dict__.items() if not k.startswith('_') and k not in excluded_keys}
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
             return False
@@ -428,6 +428,8 @@ class CMiC_Employee(Base):
         obj.EmpPreferBillRate = 'E'
         obj.EmpDirectDepMethod = 'N'
         return obj
+    def payload_dict(self, excluded_keys: set = {"Id"}) -> dict:
+        return {k: v for k, v in self.__dict__.items() if not k.startswith('_') and k not in excluded_keys}
     def _determine_pyg_Code(self, emp: Employee) -> str:
         if self.EmpTrdCode == 'HCN677': #trade code for Tenant Coordinator
             return 'HRLY'

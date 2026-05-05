@@ -140,7 +140,7 @@ def employee_push(effective_date: str):
                                 for tc in \
                                 s.get_cmic_api_results(f"{endpoint}{field_param}",limit=500)]
         #filtered_employees = [emp for emp in all_employees if emp.companyCode() =='PQCD4']
-        cmic_employees = [CMiC_Employee(emp, more_recent_date(effective_date,emp.HireDate)) for emp in all_employees
+        cmic_employees = [CMiC_Employee.from_employee(emp, more_recent_date(effective_date,emp.HireDate)) for emp in all_employees
                            if emp.companyCode() == 'PQCD4']
         trade_codes_to_post = [CMiCTradeCode(emp) for emp in all_employees
                                 if emp.job.name not in existing_trade_codes]
@@ -149,52 +149,54 @@ def employee_push(effective_date: str):
             payload = trade_code.__dict__.copy()
             r = s.post(f"{endpoint}",json=payload)
             # logger.info(r)
-    if not cmic_employees:
-        logger.info("No matching employees found.")
-        return
+        session.add_all(cmic_employees)
+        session.commit()
+        if not cmic_employees:
+            logger.info("No matching employees found.")
+            return
 
-    # Step 3: Loop and post each
-    logger.info(f"Found {len(cmic_employees)} matching employees. Starting POSTs...\n")
+        # Step 3: Loop and post each
+        logger.info(f"Found {len(cmic_employees)} matching employees. Starting POSTs...\n")
 
-    endpoint = "hcm-rest-api/rest/1/pyemployee"
-    fields = "?fields=EmpChargeOutRate,EmpNo"
-    existing_employees = [emp
-                            for emp in \
-                            s.get_cmic_api_results(f"{endpoint+fields}", limit=500)]
-    emp_df = pd.DataFrame(existing_employees)
-    #set precision to allow comparison
-    emp_df["EmpChargeOutRate"] = emp_df["EmpChargeOutRate"].round(2)
-    for cmic_emp in cmic_employees:
-        #early exit: if empNo exists and charge rate is the same, can skip
-        is_present = emp_df['EmpNo'].isin([cmic_emp.EmpNo]).any()
-        rate_to_compare = round(cmic_emp.EmpChargeOutRate,2) if cmic_emp.EmpChargeOutRate is not None else 0
-        if is_present and rate_to_compare == emp_df["EmpChargeOutRate"].loc[emp_df["EmpNo"] == cmic_emp.EmpNo].item():
-            continue
+        endpoint = "hcm-rest-api/rest/1/pyemployee"
+        fields = "?fields=EmpChargeOutRate,EmpNo"
+        existing_employees = [emp
+                                for emp in \
+                                s.get_cmic_api_results(f"{endpoint+fields}", limit=500)]
+        emp_df = pd.DataFrame(existing_employees)
+        #set precision to allow comparison
+        emp_df["EmpChargeOutRate"] = emp_df["EmpChargeOutRate"].round(2)
+        for cmic_emp in cmic_employees:
+            #early exit: if empNo exists and charge rate is the same, can skip
+            is_present = emp_df['EmpNo'].isin([cmic_emp.EmpNo]).any()
+            rate_to_compare = round(cmic_emp.EmpChargeOutRate,2) if cmic_emp.EmpChargeOutRate is not None else 0
+            if is_present and rate_to_compare == emp_df["EmpChargeOutRate"].loc[emp_df["EmpNo"] == cmic_emp.EmpNo].item():
+                continue
 
-        if is_present:
-            cmic_emp.EmhActionCode = "CH"
-        else:
-            cmic_emp.EmhActionCode = "NR"
-        payload = cmic_emp.__dict__.copy()
-        if not payload:
-            logger.info(f"️Skipping {cmic_emp} no data returned.")
-            continue
+            if is_present:
+                cmic_emp.EmhActionCode = "CH"
+            else:
+                cmic_emp.EmhActionCode = "NR"
+            payload = cmic_emp.payload_dict()
+            if not payload:
+                logger.info(f"️Skipping {cmic_emp} no data returned.")
+                continue
 
-        try:
-            r = s.post(f"{endpoint}", json=payload)
-            results.append({
-                "EmpNo": cmic_emp.EmpNo,
-                "Status": r.status_code,
-                "Response":r.json(),
-                "Payload":payload
-            })
-        except Exception as e:
-            results.append({
-                "EmpNo": cmic_emp.EmpNo,
-                "Status": "ERROR",
-                "Response": str(e),
-                "Payload":payload
-            })
+            try:
+                r = s.post(f"{endpoint}", json=payload)
+                results.append({
+                    "EmpNo": cmic_emp.EmpNo,
+                    "Status": r.status_code,
+                    "Response":r.json(),
+                    "Payload":payload
+                })
+            except Exception as e:
+                results.append({
+                    "EmpNo": cmic_emp.EmpNo,
+                    "Status": "ERROR",
+                    "Response": str(e),
+                    "Payload":payload
+                })
 
     # After loop:
     with open("DataFiles/employee_post_results.csv", "w", newline="") as f:
@@ -240,7 +242,7 @@ def post_timesheets_to_CMiC(cmic_payrun: str, testing: bool=False) -> pd.DataFra
             # joined_stmt = select(Time).where(Time.EmpId == employee.EmpId)
             # timesheets = session.execute(joined_stmt)
             for t in employee.time_entries:
-                entry = CMiC_Timesheet_Entry(t)
+                entry = CMiC_Timesheet_Entry.from_time_entry(t)
                 if entry.TshJobdeptwoId == None:
                     results.append({
                         "EmpNo": entry.TshEmpNo,
@@ -249,7 +251,7 @@ def post_timesheets_to_CMiC(cmic_payrun: str, testing: bool=False) -> pd.DataFra
                         "Status": "SKIPPED",
                         "Response": "No Job Code for employee",
                         "Hours": entry.TshNormalHours,
-                        "Time_Id": entry.TshUserField5
+                        "Time_Id": entry.Id
                     })
                     continue
 
@@ -265,7 +267,7 @@ def post_timesheets_to_CMiC(cmic_payrun: str, testing: bool=False) -> pd.DataFra
                         "Status": "SKIPPED",
                         "Response": "{}",
                         "Hours": entry.TshNormalHours,
-                        "Time_Id": entry.TshUserField5
+                        "Time_Id": entry.Id
                     })
                     continue
 
@@ -291,8 +293,9 @@ def post_timesheets_to_CMiC(cmic_payrun: str, testing: bool=False) -> pd.DataFra
                     "Status": status,
                     "Response": resp,
                     "Hours": entry.TshNormalHours,
-                    "Time_Id": entry.TshUserField5
+                    "Time_Id": entry.Id
                 })
+                session.add(entry)
         for retry_entry in retry_time_entries:
             jobcodecostcode = JCJobCategory(retry_entry)
             r = s.post(f"jc-rest-api/rest/1/jcjobcategory"
@@ -308,7 +311,7 @@ def post_timesheets_to_CMiC(cmic_payrun: str, testing: bool=False) -> pd.DataFra
                     "Status": "SKIPPED",
                     "Response": "{}",
                     "Hours": entry.TshNormalHours,
-                    "Time_Id": entry.TshUserField5
+                    "Time_Id": entry.Id
                 })
                 continue
 
@@ -334,8 +337,9 @@ def post_timesheets_to_CMiC(cmic_payrun: str, testing: bool=False) -> pd.DataFra
                 "Status": status,
                 "Response": resp,
                 "Hours": retry_entry.TshNormalHours,
-                "Time_Id": entry.TshUserField5
+                "Time_Id": entry.Id
             })
+        session.commit()
     timestamp = datetime.now().strftime("%m%d%Y_%H%M%S")
     output_file = f"DataFiles/PostResult/PostResults_{timestamp}.csv"
 
@@ -367,7 +371,7 @@ def jobCodeCostCode():
         s = CMiCAPIClient(*CMiCAPIClient.create_session())
         for employee in employees:
             for entry in employee.time_entries:
-                cmic_entry = CMiC_Timesheet_Entry(entry)
+                cmic_entry = CMiC_Timesheet_Entry.from_time_entry(entry)
                 jccc = JCJobCategory(cmic_entry)
                 finder_str = f"?finder=selectJobCategory;jobCode={cmic_entry.TshJobdeptwoId}"
                 endpoint_url = f"jc-rest-api/rest/1/jcjobcategory{finder_str}"
