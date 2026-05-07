@@ -1,7 +1,8 @@
 import pandas as pd
+import pay_period
 from sqlalchemy.orm import Session
-from sqlalchemy import select
-from models import CMiC_Timesheet_Entry, SessionLocal, CMiC_Employee
+from sqlalchemy import select, create_engine
+from models import CMiC_Timesheet_Entry, CMiC_Employee
 
 BURDEN_EARNING_CODES = {"PERDM", "LIVAL"}
 BURDEN_COST_CODE = "01731"
@@ -66,13 +67,14 @@ def build_journal_entries(
         raise ValueError(f"No PERDM/LIVAL rows found for period {period_control}")
 
     journal_lines = []
-
+    pay_periods_df = pd.read_csv('./DataFiles/Pay_Period.csv', skiprows=2)
+    CMiC_PAY_PERIOD = pay_period.find_period_by_date(pay_periods_df,'B',period_control)
     for _, row in burden_rows.iterrows():
         emp_no = str(row["employeeNumber"])
         amount = round(row["currentAmount"], 2)
         earning_code = row["earningCode"]
         pay_group = row["payGroup"]
-        ref_description = _format_ref_description(period_control)
+        ref_description = CMiC_PAY_PERIOD
 
         # Determine pay period year/period from CMiC_Timesheet_Entry
         # Use a sample entry to get ppr_year and ppr_period for this employee
@@ -153,3 +155,13 @@ def export_journal_entries(
     result_df = pd.DataFrame(lines)
     result_df.to_csv(filepath, index=False)
     return {filepath: len(lines)}
+if __name__ == "__main__":
+    earnings_df = pd.read_csv("./DataFiles/ukg_earnings_history.csv")
+    engine = create_engine("sqlite:///DataFiles/utm.db", echo=False)
+    session = Session(engine)
+    period_control = "202605081"
+    output_dir = "./DataFiles"
+    export_journal_entries(earnings_df, 
+        session,
+        period_control
+        )
