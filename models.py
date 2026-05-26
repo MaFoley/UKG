@@ -14,7 +14,7 @@ import tomllib
 
 with open("secrets.toml", "rb") as f:
     config = tomllib.load(f)
-
+TENANT_COORDINATORS = {"HCN677"}
 
 class Base(DeclarativeBase):
     pass
@@ -394,8 +394,10 @@ class CMiC_Employee(Base):
         obj.EmpCompCode = 'HJR'
         obj.EmpDeptCode = emp.location.CMiC_Department_ID
         obj.EmpPrnCode = emp.paygroup.get_cmic_payrun()
-        obj.EmpPygCode = 'PMOH' if emp.location.CMiC_Department_ID == 'PMG' else 'CNOH'
-        obj.EmpTrdCode = emp.job.name
+        obj.EmpTrdCode = emp.job.name #Trade Code set before Pay Group to allow tenant coordinator workaround
+        obj.EmpPygCode = 'HRLY' if obj.EmpTrdCode in TENANT_COORDINATORS else (
+            'PMOH' if emp.location.CMiC_Department_ID == 'PMG' else 'CNOH'
+        )
         obj.EmpWrlCode = 'ATL'
         obj.EmpHourlyRate = 1
         obj.EmpChargeOutRate = obj._determine_charge_rate(emp)
