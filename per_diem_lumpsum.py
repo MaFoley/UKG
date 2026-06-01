@@ -1,4 +1,5 @@
 import pandas as pd
+import argparse
 import pay_period
 from sqlalchemy.orm import Session
 from sqlalchemy import select, create_engine
@@ -147,8 +148,8 @@ def build_journal_entries(
 
 def export_journal_entries(
     earnings_df: pd.DataFrame,
-    session: Session,
     pay_period_end_date: str,
+    session: Session = Session(create_engine("sqlite:///DataFiles/utm.db", echo=False)),
     output_dir: str = "./DataFiles"
 ) -> dict[str, int]:
     lines = build_journal_entries(earnings_df, session, pay_period_end_date)
@@ -158,12 +159,21 @@ def export_journal_entries(
     result_df.to_csv(filepath, index=False)
     return {filepath: len(lines)}
 if __name__ == "__main__":
-    earnings_df = pd.read_csv("./DataFiles/ukg_earnings_history.csv")
+    parser = argparse.ArgumentParser(description="Export journal entries from UKG earnings data.")
+    parser.add_argument(
+        "--earnings-csv",
+        required=True,
+        help="Path to the UKG earnings history CSV file (e.g. ./DataFiles/ukg_earnings_history.csv)"
+    )
+    parser.add_argument(
+        "--pay-period-end-date",
+        required=True,
+        help="Pay period end date in YYYYMMDD format (e.g. 20260515)"
+    )
+    args = parser.parse_args()
+
+    earnings_df = pd.read_csv(args.earnings_csv)
     engine = create_engine("sqlite:///DataFiles/utm.db", echo=False)
     session = Session(engine)
-    pay_period_end_date = "20260501"
-    output_dir = "./DataFiles"
-    export_journal_entries(earnings_df, 
-        session,
-        pay_period_end_date
-        )
+
+    export_journal_entries(earnings_df, args.pay_period_end_date, session)

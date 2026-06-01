@@ -4,14 +4,17 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
-
         {
-            "name": "Python Debugger: Current File",
+            "name": "perdiem cmd line",
             "type": "debugpy",
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "args": ["202601021"]
+            "args": [
+                "--earnings-csv", "./DataFiles/ukg_earnings_history.csv",
+                "--pay-period-end-date", "20260515"
+            ]
         }
+        
     ]
 }
