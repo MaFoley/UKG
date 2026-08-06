@@ -6,7 +6,7 @@ from functools import wraps
 from collections.abc import Callable
 from sqlalchemy.orm import Session
 from models import Base, CMiC_Employee, CMiCTradeCode, Time, Employee, CMiC_Timesheet_Entry, JCJobCategory, Project
-from sqlalchemy import select
+from sqlalchemy import select, MetaData
 import sqlalchemy
 from pathlib import Path
 from posting_log_ingest import get_posted_keys
@@ -161,7 +161,7 @@ def employee_push(effective_date: str):
         logger.info(f"Found {len(cmic_employees)} matching employees. Starting POSTs...\n")
 
         endpoint = "hcm-rest-api/rest/1/pyemployee"
-        fields = "?fields=EmpChargeOutRate,EmpNo"
+        fields = "?fields=EmpChargeOutRate,EmpNo,EmpHomeDeptCode"
         existing_employees = [emp
                                 for emp in \
                                 s.get_cmic_api_results(f"{endpoint+fields}", limit=500)]
@@ -172,7 +172,11 @@ def employee_push(effective_date: str):
             #early exit: if empNo exists and charge rate is the same, can skip
             is_present = emp_df['EmpNo'].isin([cmic_emp.EmpNo]).any()
             rate_to_compare = round(cmic_emp.EmpChargeOutRate,2) if cmic_emp.EmpChargeOutRate is not None else 0
-            if is_present and rate_to_compare == emp_df["EmpChargeOutRate"].loc[emp_df["EmpNo"] == cmic_emp.EmpNo].item():
+            if cmic_emp.EmpNo == '223645':
+                logger.info(f"Looking at Lippert: {cmic_emp.EmpNo}")
+            if (is_present 
+            and rate_to_compare == emp_df["EmpChargeOutRate"].loc[emp_df["EmpNo"] == cmic_emp.EmpNo].item()  
+            and cmic_emp.EmpHomeDeptCode == emp_df["EmpHomeDeptCode"].loc[emp_df["EmpNo"] == cmic_emp.EmpNo].item()) :
                 continue
 
             if is_present:
@@ -449,8 +453,8 @@ def export_all_tables(session: Session, output_dir: str = ".") -> dict[str, int]
     return exported
 if __name__ == "__main__":
     # jobCodeCostCode()
-    post_timesheets_to_CMiC('B', testing=True)
-    # employee_push("2025-09-21")
+    #post_timesheets_to_CMiC('B', testing=True)
+    employee_push("2026-07-08")
     # load_cmic_projects()
     # validate_cmic_jobs()
 

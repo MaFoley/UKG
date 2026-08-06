@@ -185,6 +185,7 @@ class Employee(Base):
     ProjectId: Mapped[int] = mapped_column(ForeignKey("Project.Id"))
     OrgLevel1Id: Mapped[int] = mapped_column(ForeignKey("OrgLevel1.Id"))
     OrgLevel2Id: Mapped[int] = mapped_column(ForeignKey("OrgLevel2.Id"))
+    OrgLevel2: Mapped["OrgLevel2"] = relationship()
     OrgLevel3Id: Mapped[int] = mapped_column(ForeignKey("OrgLevel3.Id"))
     orglevel3: Mapped["OrgLevel3"] = relationship()
     OrgLevel4Id: Mapped[int]
@@ -392,11 +393,11 @@ class CMiC_Employee(Base):
         obj.EmpDateOfBirth = '1999-01-01'
         obj.EmpHireDate = '1999-01-02'
         obj.EmpCompCode = 'HJR'
-        obj.EmpDeptCode = emp.location.CMiC_Department_ID
+        obj.EmpDeptCode = emp.OrgLevel2.CMiC_Department_ID
         obj.EmpPrnCode = emp.paygroup.get_cmic_payrun()
         obj.EmpTrdCode = emp.job.name #Trade Code set before Pay Group to allow tenant coordinator workaround
         obj.EmpPygCode = 'HRLY' if obj.EmpTrdCode in TENANT_COORDINATORS else (
-            'PMOH' if emp.location.CMiC_Department_ID == 'PMG' else 'CNOH'
+            'PMOH' if obj.EmpDeptCode == 'PMG' else 'CNOH'
         )
         obj.EmpWrlCode = 'ATL'
         obj.EmpHourlyRate = 1
@@ -418,7 +419,7 @@ class CMiC_Employee(Base):
         obj.EmpYearWorkingDays = 260.0
         obj.EmpYearWorkingHours = 2080.0
         obj.EmpUeValidFlag = 'Y'
-        obj.EmpHomeDeptCode = emp.location.CMiC_Department_ID
+        obj.EmpHomeDeptCode = emp.OrgLevel2.CMiC_Department_ID
         obj.EmpGlAccCode = '600.004'
         obj.EmpPayrollClearAccCode = '240.001'
         obj.EmpDrClearAccCode = '240.001'
@@ -435,7 +436,7 @@ class CMiC_Employee(Base):
     def _determine_pyg_Code(self, emp: Employee) -> str:
         if self.EmpTrdCode == 'HCN677': #trade code for Tenant Coordinator
             return 'HRLY'
-        if emp.location.CMiC_Department_ID == 'PMG':
+        if self.EmpDeptCode == 'PMG':
             return 'PMOH'
         return 'CNOH'
     def _determine_charge_rate(self, emp: Employee):
