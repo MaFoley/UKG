@@ -261,7 +261,7 @@ class CMiC_Timesheet_Entry(Base):
 
         if project_name[-4:] == "0000" or "PROJ" in project_name or "Z" == project_name:
             obj.TshTypeCode = 'G'
-            obj.TshJobdeptwoId = time_entry.employee.location.CMiC_Department_ID
+            obj.TshJobdeptwoId = time_entry.employee.OrgLevel2.CMiC_Department_ID
             obj.TshPhsacctwiId = '600.004'
         elif time_entry.project and time_entry.project.cmic_project:
             obj.TshTypeCode = 'J'

@@ -24,7 +24,7 @@ Time = ""
 #    "ScheduleRequest"
 #    "Timesheet"
 [CMiC_Base]
-env = 'test'
+env = 'prod'
 prod_host_url = 'https://nova-api.cmiccloud.com/cmicprod'
 test_host_url = 'https://nova-api-test.cmiccloud.com/cmictest'
 [Logging]
@@ -51,3 +51,5 @@ VEHT = 'Wages'
 RETRO = 'Wages'
 SRVAW = 'Burden'
 BURDEN = 'Burden'
+MISC = 'Burden'
+PL = 'Burden'
