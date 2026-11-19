@@ -347,7 +347,7 @@ def post_timesheets_to_CMiC(cmic_payrun: str, testing: bool=False) -> pd.DataFra
             })
         session.commit()
     export_all_tables(session, "./DataFiles/ResultDB")
-    timestamp = datetime.now().strftime("%m%d%Y_%H%M%S")
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_file = f"DataFiles/PostResult/PostResults_{timestamp}.csv"
 
     source_name = output_file.split("/")[-1]
